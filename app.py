@@ -9,8 +9,35 @@ st.title("👗 Генерация изображений одежды")
 with st.sidebar:
     st.header("Настройки")
     api_key = st.text_input("🔑 Google Gemini API Key", type="password", placeholder="Введите ключ...")
-    model_name = "gemini-2.0-flash-exp-image-generation"  # фиксировано
+    
+    # Поле для ввода модели (можно изменить, если текущая не работает)
+    img_model_name = st.text_input(
+        "🖼️ Модель для генерации изображений",
+        value="gemini-2.0-flash-exp-image-generation",
+        help="Введите название модели, поддерживающей генерацию изображений. "
+             "Нажмите кнопку ниже, чтобы увидеть доступные."
+    )
+    
+    if st.button("📋 Показать доступные модели (с поддержкой IMAGE)"):
+        if not api_key:
+            st.error("Сначала введите API-ключ.")
+        else:
+            try:
+                genai.configure(api_key=api_key)
+                models = genai.list_models()
+                st.subheader("Доступные модели:")
+                for m in models:
+                    # Проверяем, поддерживает ли модель модальность IMAGE на выходе
+                    if hasattr(m, 'supported_generation_methods') and 'generateContent' in m.supported_generation_methods:
+                        # Дополнительно можно проверить наличие response_modalities
+                        st.write(f"- {m.name}")
+                    else:
+                        # тоже покажем, но отметим
+                        st.write(f"- {m.name} (возможно, не для изображений)")
+            except Exception as e:
+                st.error(f"Ошибка получения списка: {e}")
 
+# Основная часть
 col1, col2 = st.columns([1, 1])
 
 with col1:
@@ -46,30 +73,28 @@ with col2:
             st.info("⏳ Генерация... Пожалуйста, подождите.")
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(model_name)
+                model = genai.GenerativeModel(img_model_name)
 
-                # ---------- ИСПРАВЛЕННЫЙ ВЫЗОВ ----------
-                # Пробуем разные варианты для совместимости
+                # Пробуем разные способы передачи response_modalities
                 try:
-                    # Способ 1: новый синтаксис (рекомендуемый)
                     response = model.generate_content(
                         [prompt, ref_image],
                         generation_config=genai.types.GenerateContentConfig(
                             response_modalities=['IMAGE']
                         )
                     )
-                except AttributeError:
-                    # Способ 2: старый синтаксис (если GenerateContentConfig не найден)
+                except (AttributeError, TypeError):
+                    # fallback на словарь
                     response = model.generate_content(
                         [prompt, ref_image],
-                        generation_config={
-                            "response_modalities": ["IMAGE"]
-                        }
+                        generation_config={"response_modalities": ["IMAGE"]}
                     )
 
-                # ---- ВЫВОД ОТВЕТА API (отладка) ----
-                st.subheader("📦 Полный ответ от API:")
-                st.code(str(response), language="text")
+                # Отладка
+                st.subheader("📦 Ответ API (часть):")
+                # Покажем только первые 500 символов, чтобы не загромождать
+                resp_str = str(response)
+                st.code(resp_str[:1000] + ("..." if len(resp_str)>1000 else ""), language="text")
 
                 # Извлекаем изображение
                 generated_image = None
@@ -93,7 +118,12 @@ with col2:
                     st.error("❌ В ответе API не найдено изображение.")
                     if hasattr(response, 'text') and response.text:
                         st.warning(f"Текст ответа:\n{response.text}")
+                    # Если ошибка 404 – предложим сменить модель
+                    if "404" in resp_str or "not found" in resp_str:
+                        st.info("💡 Похоже, модель не найдена. Попробуйте нажать кнопку «Показать доступные модели» в боковой панели, чтобы узнать актуальное имя модели, и введите его в поле выше.")
 
             except Exception as e:
                 st.error(f"❌ Ошибка при вызове API: {e}")
                 st.code(str(e), language="text")
+                if "404" in str(e):
+                    st.info("💡 Модель не найдена. Нажмите кнопку «Показать доступные модели», чтобы увидеть актуальные имена.")
