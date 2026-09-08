@@ -128,11 +128,13 @@ with tab1:
             type=["jpg", "jpeg", "png"],
             help="Фото вещи на манекене или просто отдельно"
         )
+        ref_image = None
         if uploaded_ref:
-            ref_image = Image.open(uploaded_ref)
-            st.image(ref_image, caption="Исходное фото", use_column_width=True)
-        else:
-            ref_image = None
+            try:
+                ref_image = Image.open(uploaded_ref)
+                st.image(ref_image, caption="Исходное фото", use_container_width=True)  # исправлено
+            except Exception as e:
+                st.error(f"Не удалось загрузить изображение: {e}")
 
     with col_right:
         st.markdown('<div class="sub-header">Настройки промптов</div>', unsafe_allow_html=True)
@@ -180,6 +182,8 @@ with tab1:
                 st.error("❌ Введите API-ключ в боковой панели.")
             elif not uploaded_ref:
                 st.error("❌ Загрузите референсное фото.")
+            elif ref_image is None:
+                st.error("❌ Не удалось загрузить изображение. Попробуйте другой файл.")
             elif not selected_model.startswith("gemini-2.0-flash-exp-image-generation"):
                 st.warning("⚠️ Для генерации изображений рекомендуется использовать модель 'gemini-2.0-flash-exp-image-generation'.")
             else:
@@ -238,7 +242,7 @@ with tab1:
         with col1:
             st.subheader("🧍 Манекен")
             if img1:
-                st.image(img1, use_column_width=True)
+                st.image(img1, use_container_width=True)  # исправлено
                 # Кнопка скачивания
                 buf = io.BytesIO()
                 img1.save(buf, format="PNG")
@@ -253,7 +257,7 @@ with tab1:
         with col2:
             st.subheader("👩 Модель")
             if img2:
-                st.image(img2, use_column_width=True)
+                st.image(img2, use_container_width=True)  # исправлено
                 buf = io.BytesIO()
                 img2.save(buf, format="PNG")
                 st.download_button(
@@ -276,13 +280,15 @@ with tab2:
         help="Скриншот страницы товара (например, с Sellpy)"
     )
 
+    screenshot = None
     if uploaded_screenshot:
-        screenshot = Image.open(uploaded_screenshot)
-        st.image(screenshot, caption="Загруженный скриншот", use_column_width=True)
-    else:
-        screenshot = None
+        try:
+            screenshot = Image.open(uploaded_screenshot)
+            st.image(screenshot, caption="Загруженный скриншот", use_container_width=True)  # исправлено
+        except Exception as e:
+            st.error(f"Не удалось загрузить скриншот: {e}")
 
-    # Промпт для описания (можно сделать редактируемым, но оставим фиксированным)
+    # Промпт для описания
     description_prompt = (
         "Проанализируй данный скриншот с информацией о вещи. "
         "Извлеки все ключевые данные (бренд, состав, замеры, состояние, особенности) "
@@ -296,6 +302,8 @@ with tab2:
             st.error("❌ Введите API-ключ в боковой панели.")
         elif not uploaded_screenshot:
             st.error("❌ Загрузите скриншот.")
+        elif screenshot is None:
+            st.error("❌ Не удалось загрузить скриншот. Попробуйте другой файл.")
         else:
             with st.spinner("Генерируем описание..."):
                 description = generate_description(
@@ -312,9 +320,7 @@ with tab2:
     # Отображение результата
     if st.session_state.description_text:
         st.markdown("### 📝 Готовое описание")
-        # Используем st.code с кнопкой копирования (по умолчанию есть)
         st.code(st.session_state.description_text, language="markdown", wrap_lines=True)
-        # Дополнительно кнопка скачивания
         st.download_button(
             label="📥 Скачать описание (TXT)",
             data=st.session_state.description_text,
