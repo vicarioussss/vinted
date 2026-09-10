@@ -4,6 +4,11 @@ from PIL import Image
 import html as html_lib
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
+import requests
+import io
+import json
+import time
+import os
 
 WHITE_MOON = (
     "data:image/svg+xml,"
@@ -20,6 +25,9 @@ st.set_page_config(
 )
 
 MODEL_NAME = "gemini-3.7-flash"
+LEONARDO_API = "https://cloud.leonardo.ai/api/rest/v1"
+LEONARDO_MODEL = "b24e16ff-06e3-43eb-8d33-4416c2d75876"
+LEONARDO_DEFAULT_TOKEN = "cfut_bMc1ubiicg6g83noA0GnvbUhn1PHRtsVRG9PfMFEa5486187"
 
 st.markdown("""
 <style>
@@ -206,7 +214,7 @@ st.markdown("""
     }
     .stTextInput input::placeholder { color: rgba(200, 200, 200, 0.3) !important; }
 
-    .stSelectbox label {
+    .stSelectbox label, .stRadio label {
         font-family: 'JetBrains Mono', 'SF Mono', monospace !important;
         font-size: 0.62rem !important;
         text-transform: uppercase;
@@ -369,6 +377,12 @@ def _persist_key():
         )
 
 
+IMAGE_ENGINES = [
+    "Leonardo.ai",
+    "Pollinations",
+    "HuggingFace Space",
+]
+
 with st.sidebar:
     st.text_input(
         "Gemini API Key",
@@ -379,6 +393,32 @@ with st.sidebar:
         help="Saved in your browser. Enter once — stays forever."
     )
     st.caption(f"model // {MODEL_NAME}")
+
+    st.markdown("---")
+
+    st.radio(
+        "Image Engine",
+        IMAGE_ENGINES,
+        key="image_engine",
+        index=0
+    )
+
+    if st.session_state.get("image_engine") == "Leonardo.ai":
+        st.text_input(
+            "Leonardo API Key",
+            type="password",
+            value=LEONARDO_DEFAULT_TOKEN,
+            key="leonardo_key"
+        )
+    elif st.session_state.get("image_engine") == "HuggingFace Space":
+        st.text_input(
+            "HF Space name",
+            value="multimodalart/qwen-image-edit",
+            key="hf_space",
+            help="e.g. multimodalart/qwen-image-edit"
+        )
+
+    st.caption("rotate your Leonardo key after testing!")
 
 COPY_JS = """
 <script>
@@ -447,6 +487,170 @@ def generate_description(prompt: str, image: Image.Image, api_key: str):
     except Exception as e:
         st.error(f"API error: {e}")
         return None
+
+
+def pil_to_jpeg_bytes(img: Image.Image) -> bytes:
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=92)
+    return buf.getvalue()
+
+
+def leonardo_upload_init(image: Image.Image, token: str):
+    try:
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {token}"
+        }
+        r = requests.post(
+            f"{LEONARDO_API}/init-image",
+            headers=headers,
+            json={"extension": "jpg"},
+            timeout=30
+        )
+        r.raise_for_status()
+        data = r.json()["uploadInitImage"]
+        init_id = data["id"]
+        upload_url = data["url"]
+        fields = json.loads(data["fields"])
+
+        files = {"file": ("image.jpg", pil_to_jpeg_bytes(image), "image/jpeg")}
+        r2 = requests.post(upload_url, data=fields, files=files, timeout=60)
+        r2.raise_for_status()
+        return init_id
+    except Exception as e:
+        st.error(f"Leonardo upload failed: {e}")
+        return None
+
+
+def generate_leonardo(prompt: str, ref: Image.Image | None, token: str):
+    try:
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {token}"
+        }
+
+        payload = {
+            "prompt": prompt,
+            "modelId": LEONARDO_MODEL,
+            "width": 768,
+            "height": 1024,
+            "num_images": 1,
+            "guidance_scale": 7,
+            "public": False,
+        }
+
+        if ref is not None:
+            init_id = leonardo_upload_init(ref, token)
+            if not init_id:
+                return None
+            payload["init_image_id"] = init_id
+            payload["init_strength"] = 0.35
+            payload["image_prompt_type"] = "Image"
+
+        r = requests.post(
+            f"{LEONARDO_API}/generations",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        if r.status_code != 200:
+            st.error(f"Leonardo API {r.status_code}: {r.text[:300]}")
+            return None
+        gen_id = r.json()["sdGenerationJob"]["generationId"]
+
+        for _ in range(60):
+            time.sleep(2)
+            r2 = requests.get(
+                f"{LEONARDO_API}/generations/{gen_id}",
+                headers=headers,
+                timeout=30
+            )
+            if r2.status_code != 200:
+                continue
+            job = r2.json().get("generations_by_pk") or {}
+            status = job.get("status")
+            if status == "COMPLETE":
+                imgs = job.get("generated_images", [])
+                if imgs:
+                    url = imgs[0]["url"]
+                    resp = requests.get(url, timeout=60)
+                    resp.raise_for_status()
+                    return Image.open(io.BytesIO(resp.content))
+                return None
+            if status == "FAILED":
+                st.error("Leonardo generation failed.")
+                return None
+
+        st.error("Leonardo timeout.")
+        return None
+    except Exception as e:
+        st.error(f"Leonardo error: {e}")
+        return None
+
+
+def generate_pollinations(prompt: str, ref: Image.Image | None = None):
+    try:
+        import urllib.parse
+        encoded = urllib.parse.quote(prompt)
+        url = (
+            f"https://image.pollinations.ai/prompt/{encoded}"
+            f"?width=768&height=1024&nologo=true&model=flux"
+        )
+        r = requests.get(url, timeout=90)
+        r.raise_for_status()
+        return Image.open(io.BytesIO(r.content))
+    except Exception as e:
+        st.error(f"Pollinations error: {e}")
+        return None
+
+
+def generate_hf_space(prompt: str, ref: Image.Image, space_name: str):
+    try:
+        from gradio_client import Client, handle_file
+        tmp_in = "/tmp/prompties_in.png"
+        ref.convert("RGB").save(tmp_in)
+
+        client = Client(space_name)
+        result = client.predict(
+            image=handle_file(tmp_in),
+            prompt=prompt,
+            api_name="/inference"
+        )
+        if isinstance(result, str) and os.path.exists(result):
+            return Image.open(result)
+        if isinstance(result, (list, tuple)) and result:
+            p = result[0]
+            if isinstance(p, str) and os.path.exists(p):
+                return Image.open(p)
+        st.error("Unexpected HF Space response.")
+        return None
+    except Exception as e:
+        st.error(f"HF Space error: {e}")
+        return None
+
+
+def generate_image(prompt: str, ref: Image.Image | None):
+    engine = st.session_state.get("image_engine", "Leonardo.ai")
+    if engine == "Leonardo.ai":
+        token = st.session_state.get("leonardo_key", "").strip()
+        if not token:
+            st.error("Leonardo API key missing.")
+            return None
+        return generate_leonardo(prompt, ref, token)
+    if engine == "Pollinations":
+        return generate_pollinations(prompt, ref)
+    if engine == "HuggingFace Space":
+        space = st.session_state.get("hf_space", "").strip()
+        if not space:
+            st.error("HF Space name missing.")
+            return None
+        if ref is None:
+            st.error("HF Space requires a reference image.")
+            return None
+        return generate_hf_space(prompt, ref, space)
+    return None
 
 
 st.markdown(COPY_JS, unsafe_allow_html=True)
@@ -522,6 +726,23 @@ with right:
         )
         st.markdown(copyable_block(p1, "prompt1"), unsafe_allow_html=True)
 
+        p1_plain = (
+            f"Generate a high-resolution studio photo of this {material1} {item1}, "
+            f"preserving every detail, on a headless/armless feminine cream linen mannequin "
+            f"{part1}, turned three-quarters toward the left side of the frame with soft "
+            f"incoming light, against a plain dark background"
+        )
+
+        if st.button("Generate Mannequin Photo", use_container_width=True, key="gen_p1"):
+            ref = screenshot
+            with st.spinner(f"Generating with {st.session_state.get('image_engine')}…"):
+                img = generate_image(p1_plain, ref)
+                if img:
+                    st.session_state["img_p1"] = img
+
+        if st.session_state.get("img_p1") is not None:
+            st.image(st.session_state["img_p1"], use_container_width=True)
+
     st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
     with st.container(border=True):
@@ -546,3 +767,22 @@ with right:
             f'--ar 3:4 --style raw'
         )
         st.markdown(copyable_block(p2, "prompt2"), unsafe_allow_html=True)
+
+        p2_plain = (
+            f"Fashion e-commerce photography, mid-shot of a model, wearing this "
+            f"{material2} {item2} and {bottom} high-waist wide-leg trousers. "
+            f"Faceless framing, cropped at the chin, casual pose. "
+            f"Clean light neutral grey studio background. Soft diffused lighting, "
+            f"minimalist aesthetic, effortless chic, high contrast, sharp clothing "
+            f"details, photorealistic"
+        )
+
+        if st.button("Generate Model Photo", use_container_width=True, key="gen_p2"):
+            ref = screenshot
+            with st.spinner(f"Generating with {st.session_state.get('image_engine')}…"):
+                img = generate_image(p2_plain, ref)
+                if img:
+                    st.session_state["img_p2"] = img
+
+        if st.session_state.get("img_p2") is not None:
+            st.image(st.session_state["img_p2"], use_container_width=True)
