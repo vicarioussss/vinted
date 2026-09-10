@@ -2,6 +2,8 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import html as html_lib
+import base64
+import os
 
 # ==================== CONFIG ====================
 st.set_page_config(
@@ -13,8 +15,16 @@ st.set_page_config(
 
 MODEL_NAME = "gemini-3.7-flash"
 
-# 🔁 Замените URL, если хотите другую картинку замка
-CASTLE_BG_URL = "https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?w=3840&q=90&auto=format&fit=crop"
+# ==================== BACKGROUND ====================
+# Локальный файл background.jpg конвертируем в base64, чтобы CSS мог его использовать
+def load_bg_data_url(path: str) -> str:
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        return f"data:image/jpeg;base64,{b64}"
+    return ""  # если файла нет — фон просто чёрный
+
+CASTLE_BG_URL = load_bg_data_url("background.jpg")
 
 # ==================== STYLES ====================
 st.markdown(f"""
@@ -27,14 +37,12 @@ st.markdown(f"""
         color: #ededed;
     }}
     .stApp {{
-        background:
-            radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 255, 255, 0.05), transparent),
-            radial-gradient(ellipse 60% 40% at 80% 100%, rgba(255, 255, 255, 0.03), transparent),
-            #000000;
+        background: #000000;
         background-attachment: fixed;
     }}
 
-    /* ========== CASTLE IMAGE LAYER (behind everything, low opacity) ========== */
+    /* ========== BACKGROUND IMAGE LAYER ========== */
+    {"" if not CASTLE_BG_URL else f'''
     .stApp::before {{
         content: '';
         position: fixed;
@@ -43,25 +51,26 @@ st.markdown(f"""
         background-size: cover;
         background-position: center center;
         background-repeat: no-repeat;
-        opacity: 0.22;
+        opacity: 0.28;
         pointer-events: none;
         z-index: 0;
-        filter: saturate(0.85) brightness(0.9);
+        filter: saturate(0.95) brightness(0.85) contrast(1.05);
     }}
+    '''}
 
-    /* dark vignette to make edges fade into black */
+    /* dark vignette for depth */
     .stApp::after {{
         content: '';
         position: fixed;
         inset: 0;
         background:
-            radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.75) 100%);
+            radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.80) 100%);
         pointer-events: none;
         z-index: 0;
     }}
 
     section[data-testid="stSidebar"] {{
-        background: rgba(5, 5, 5, 0.65) !important;
+        background: rgba(5, 5, 5, 0.70) !important;
         backdrop-filter: blur(24px) saturate(120%);
         -webkit-backdrop-filter: blur(24px) saturate(120%);
         border-right: 1px solid rgba(255, 255, 255, 0.06);
@@ -79,15 +88,15 @@ st.markdown(f"""
 
     /* ========== GLASS PANEL ========== */
     [data-testid="stVerticalBlockBorderWrapper"] {{
-        background: linear-gradient(180deg, rgba(20, 22, 20, 0.55) 0%, rgba(10, 12, 10, 0.45) 100%) !important;
-        backdrop-filter: blur(36px) saturate(130%);
-        -webkit-backdrop-filter: blur(36px) saturate(130%);
+        background: linear-gradient(180deg, rgba(12, 14, 16, 0.62) 0%, rgba(6, 8, 10, 0.55) 100%) !important;
+        backdrop-filter: blur(40px) saturate(140%);
+        -webkit-backdrop-filter: blur(40px) saturate(140%);
         border-radius: 16px !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.04) inset,
-            0 20px 60px rgba(0, 0, 0, 0.7) !important;
-        padding: 20px 22px !important;
+            0 1px 0 rgba(255, 255, 255, 0.05) inset,
+            0 24px 70px rgba(0, 0, 0, 0.75) !important;
+        padding: 22px 24px !important;
         position: relative;
         overflow: hidden;
         z-index: 1;
@@ -110,10 +119,10 @@ st.markdown(f"""
         text-transform: uppercase;
         letter-spacing: 3px;
         font-weight: 500;
-        color: rgba(255, 255, 255, 0.45) !important;
+        color: rgba(255, 255, 255, 0.50) !important;
         padding-bottom: 14px;
         margin-bottom: 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         display: flex;
         align-items: center;
         gap: 8px;
@@ -144,7 +153,7 @@ st.markdown(f"""
         background: #ffffff;
         border-color: #ffffff;
         transform: translateY(-1px);
-        box-shadow: 0 0 24px rgba(255, 255, 255, 0.25);
+        box-shadow: 0 0 24px rgba(255, 255, 255, 0.28);
     }}
     .stButton > button:active {{ transform: translateY(0); }}
     .stButton > button p, .stButton > button span {{ color: #000000 !important; }}
@@ -171,7 +180,7 @@ st.markdown(f"""
         font-size: 0.62rem !important;
         text-transform: uppercase;
         letter-spacing: 1.6px;
-        color: rgba(255, 255, 255, 0.4) !important;
+        color: rgba(255, 255, 255, 0.45) !important;
         margin-bottom: 4px !important;
     }}
     .stSelectbox div[data-baseweb="select"] > div {{
@@ -230,7 +239,7 @@ st.markdown(f"""
     #MainMenu, footer {{ visibility: hidden; }}
 
     /* ============================================================
-       ========== COPYABLE TEXT BLOCKS (no nested panel) ==========
+       ========== COPYABLE TEXT BLOCKS ==========
        ============================================================ */
     .copyable,
     .result-wrap {{
@@ -240,6 +249,7 @@ st.markdown(f"""
         border-radius: 0;
         padding: 2px 4px 2px 16px;
         margin-top: 18px;
+        margin-bottom: 32px;              /* ← больше воздуха снизу */
         font-family: 'Inter', -apple-system, sans-serif;
         font-size: 0.88rem;
         line-height: 1.65;
