@@ -2,6 +2,8 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import html as html_lib
+import extra_streamlit_components as stx
+from datetime import datetime, timedelta
 
 WHITE_MOON = (
     "data:image/svg+xml,"
@@ -345,8 +347,27 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+cookie_manager = stx.CookieManager(key="ck")
+
 if "gemini_api_key" not in st.session_state:
     st.session_state["gemini_api_key"] = ""
+
+cookies = cookie_manager.get_all()
+if cookies and not st.session_state["gemini_api_key"]:
+    saved = cookies.get("gemini_api_key")
+    if saved:
+        st.session_state["gemini_api_key"] = saved
+        st.rerun()
+
+
+def _persist_key():
+    if st.session_state["gemini_api_key"]:
+        cookie_manager.set(
+            "gemini_api_key",
+            st.session_state["gemini_api_key"],
+            expires_at=datetime.now() + timedelta(days=365)
+        )
+
 
 with st.sidebar:
     st.text_input(
@@ -354,7 +375,8 @@ with st.sidebar:
         type="password",
         placeholder="Paste your key…",
         key="gemini_api_key",
-        help="Saved for the current session."
+        on_change=_persist_key,
+        help="Saved in your browser. Enter once — stays forever."
     )
     st.caption(f"model // {MODEL_NAME}")
 
