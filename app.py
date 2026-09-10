@@ -3,7 +3,6 @@ import google.generativeai as genai
 from PIL import Image
 import html as html_lib
 
-# ==================== CONFIG ====================
 st.set_page_config(
     page_title="my prompties",
     page_icon="🌙",
@@ -13,12 +12,10 @@ st.set_page_config(
 
 MODEL_NAME = "gemini-3.7-flash"
 
-# ==================== STYLES ====================
 st.markdown("""
 <style>
     * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-    /* ========== BASE ========== */
     html, body, .stApp {
         background-color: #050505;
         color: #c8c8c8;
@@ -29,7 +26,6 @@ st.markdown("""
         overflow-x: hidden;
     }
 
-    /* ========== FLOATING ORBS BACKGROUND ========== */
     .orb-layer {
         position: fixed;
         inset: 0;
@@ -74,7 +70,6 @@ st.markdown("""
         top: 45%; left: 40%;
         animation: float2 30s ease-in-out infinite reverse;
     }
-
     @keyframes float1 {
         0%, 100% { transform: translate(0, 0) scale(1); }
         50% { transform: translate(80px, 60px) scale(1.15); }
@@ -92,7 +87,6 @@ st.markdown("""
         50% { transform: translate(-90px, -50px) scale(1.08); }
     }
 
-    /* Dark vignette to deepen edges */
     .stApp::after {
         content: '';
         position: fixed;
@@ -119,7 +113,6 @@ st.markdown("""
         z-index: 2;
     }
 
-    /* ========== GLASS PANEL ========== */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background: linear-gradient(180deg, rgba(22, 22, 24, 0.60) 0%, rgba(14, 14, 16, 0.55) 100%) !important;
         backdrop-filter: blur(45px) saturate(130%);
@@ -145,7 +138,6 @@ st.markdown("""
         pointer-events: none;
     }
 
-    /* ========== SECTION LABEL ========== */
     .section-label {
         font-family: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
         font-size: 0.68rem;
@@ -169,7 +161,6 @@ st.markdown("""
         box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
     }
 
-    /* ========== BUTTONS ========== */
     .stButton > button {
         width: 100%;
         background: rgba(230, 230, 230, 0.92);
@@ -191,7 +182,6 @@ st.markdown("""
     .stButton > button:active { transform: translateY(0); }
     .stButton > button p, .stButton > button span { color: #1a1a1a !important; }
 
-    /* ========== INPUTS ========== */
     .stTextInput input {
         background: rgba(255, 255, 255, 0.04) !important;
         border: 1px solid rgba(255, 255, 255, 0.09) !important;
@@ -207,7 +197,6 @@ st.markdown("""
     }
     .stTextInput input::placeholder { color: rgba(200, 200, 200, 0.3) !important; }
 
-    /* ========== SELECTBOXES ========== */
     .stSelectbox label {
         font-family: 'JetBrains Mono', 'SF Mono', monospace !important;
         font-size: 0.62rem !important;
@@ -236,11 +225,8 @@ st.markdown("""
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9) !important;
     }
     div[data-baseweb="popover"] li { font-size: 0.86rem !important; }
-    div[data-baseweb="popover"] li:hover {
-        background: rgba(255, 255, 255, 0.06) !important;
-    }
+    div[data-baseweb="popover"] li:hover { background: rgba(255, 255, 255, 0.06) !important; }
 
-    /* ========== FILE UPLOADER ========== */
     section[data-testid="stFileUploaderDropzone"] {
         background: rgba(255, 255, 255, 0.02) !important;
         border: 1px dashed rgba(255, 255, 255, 0.14) !important;
@@ -267,11 +253,9 @@ st.markdown("""
         border-color: rgba(255, 255, 255, 0.25) !important;
     }
 
-    /* ========== HIDE CHROME ========== */
     header[data-testid="stHeader"] { background: transparent; }
     #MainMenu, footer { visibility: hidden; }
 
-    /* ========== COPYABLE TEXT BLOCKS ========== */
     .copyable,
     .result-wrap {
         background: transparent;
@@ -299,7 +283,6 @@ st.markdown("""
         font-size: 0.84rem;
     }
 
-    /* ========== COPY ICON ========== */
     .copy-icon {
         float: right;
         margin: 0 0 4px 10px;
@@ -325,7 +308,6 @@ st.markdown("""
     }
     .copy-icon:active { transform: scale(0.92); }
 
-    /* ========== SIDEBAR CAPTION ========== */
     section[data-testid="stSidebar"] .stCaption,
     section[data-testid="stSidebar"] small {
         font-family: 'JetBrains Mono', monospace !important;
@@ -334,13 +316,11 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    /* ========== SPINNER ========== */
     .stSpinner > div {
         border-color: rgba(255, 255, 255, 0.12) !important;
         border-top-color: #c8c8c8 !important;
     }
 
-    /* ========== ALERTS ========== */
     .stAlert {
         background: rgba(255, 255, 255, 0.03) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -349,7 +329,6 @@ st.markdown("""
     }
 </style>
 
-<!-- Floating orbs -->
 <div class="orb-layer">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -359,7 +338,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ==================== SIDEBAR ====================
 if "gemini_api_key" not in st.session_state:
     st.session_state["gemini_api_key"] = ""
 
@@ -373,7 +351,6 @@ with st.sidebar:
     )
     st.caption(f"model // {MODEL_NAME}")
 
-# ==================== HELPERS ====================
 COPY_JS = """
 <script>
 function copyBlock(id, btn) {
@@ -388,22 +365,11 @@ function copyBlock(id, btn) {
 </script>
 """
 
-def render_copyable(html_content: str, block_id: str) -> str:
-    return (
-        f'<div class="copyable" id="{block_id}">'
-        f'<button class="copy-icon" title="Copy" '
-        f'onclick="copyBlock(\'{block_id}\', this)">⧉</button>'
-        f'{html_content}'
-        f'</div>'
-    )
-
-# ==================== OPTIONS ====================
 MATERIALS = ["wool", "silk", "suede", "leather"]
 ITEM_TYPES = ["blazer", "dress", "coat", "top", "skirt"]
 MANNEQUIN_PARTS = ["torso", "-"]
 BOTTOM_COLORS = ["black", "white", "beige", "grey"]
 
-# ==================== DESCRIPTION PROMPT ====================
 DESCRIPTION_PROMPT = """You are a professional copywriter for a high-end vintage and designer fashion store.
 
 Analyze the screenshot with garment information and output a product card in EXACTLY the following format. Do NOT add any labels, headings, section titles, or markdown formatting. Do NOT add any introductory or explanatory sentences.
@@ -432,22 +398,32 @@ STRICT RULES:
 - Everything must be in English.
 """
 
-def generate_description(prompt: str, screenshot: Image.Image, api_key: str):
+
+def copyable_block(html_content: str, block_id: str) -> str:
+    return (
+        f'<div class="copyable" id="{block_id}">'
+        f'<button class="copy-icon" title="Copy" '
+        f'onclick="copyBlock(\'{block_id}\', this)">⧉</button>'
+        f'{html_content}'
+        f'</div>'
+    )
+
+
+def generate_description(prompt: str, image: Image.Image, api_key: str):
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content([prompt, screenshot])
+        response = model.generate_content([prompt, image])
         return response.text
     except Exception as e:
         st.error(f"API error: {e}")
         return None
 
-# ==================== LAYOUT ====================
+
 st.markdown(COPY_JS, unsafe_allow_html=True)
 
 left, right = st.columns([1, 1], gap="large")
 
-# ------------------ LEFT: DESCRIPTION ------------------
 with left:
     with st.container(border=True):
         st.markdown(
@@ -461,6 +437,7 @@ with left:
             label_visibility="collapsed",
             key="desc_upload"
         )
+
         screenshot = None
         if uploaded:
             try:
@@ -469,7 +446,7 @@ with left:
             except Exception as e:
                 st.error(f"Cannot open image: {e}")
 
-        if st.button("Generate Description", use_container_width=True, key="gen_btn"):
+        if st.button("Generate Description", use_container_width=True):
             if not st.session_state["gemini_api_key"]:
                 st.error("Please enter your Gemini API key in the sidebar.")
             elif screenshot is None:
@@ -486,69 +463,58 @@ with left:
 
         if st.session_state.get("description_text"):
             safe = html_lib.escape(st.session_state["description_text"])
-            result_html = (
+            st.markdown(
                 f'<div class="result-wrap" id="result-block">'
                 f'<button class="copy-icon" title="Copy" '
                 f'onclick="copyBlock(\'result-block\', this)">⧉</button>'
-                f'{safe}'
-                f'</div>'
+                f'{safe}</div>',
+                unsafe_allow_html=True
             )
-            st.markdown(result_html, unsafe_allow_html=True)
 
-# ------------------ RIGHT: PROMPTS ------------------
 with right:
-
-    # ============ PROMPT 1 ============
     with st.container(border=True):
         st.markdown(
             '<div class="section-label">Prompt / Mannequin</div>',
             unsafe_allow_html=True
         )
 
-        p1c1, p1c2, p1c3 = st.columns(3)
-        with p1c1:
-            p1_material = st.selectbox("Material", MATERIALS, index=0, key="p1_mat")
-        with p1c2:
-            p1_item = st.selectbox("Item", ITEM_TYPES, index=0, key="p1_item")
-        with p1c3:
-            p1_part = st.selectbox("Mannequin", MANNEQUIN_PARTS, index=0, key="p1_part")
+        c1, c2, c3 = st.columns(3)
+        material1 = c1.selectbox("Material", MATERIALS, key="p1_mat")
+        item1 = c2.selectbox("Item", ITEM_TYPES, key="p1_item")
+        part1 = c3.selectbox("Mannequin", MANNEQUIN_PARTS, key="p1_part")
 
-        p1_html = (
+        p1 = (
             f'Generate a high-resolution studio photo of this '
-            f'<span class="hl">{p1_material}</span> '
-            f'<span class="hl">{p1_item}</span>, '
+            f'<span class="hl">{material1}</span> '
+            f'<span class="hl">{item1}</span>, '
             f'preserving every detail, on a headless/armless feminine cream linen mannequin '
-            f'<span class="hl">{p1_part}</span>, '
+            f'<span class="hl">{part1}</span>, '
             f'turned three-quarters toward the left side of the frame with soft incoming light, '
             f'against a plain dark background'
         )
-        st.markdown(render_copyable(p1_html, "prompt1"), unsafe_allow_html=True)
+        st.markdown(copyable_block(p1, "prompt1"), unsafe_allow_html=True)
 
     st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
-    # ============ PROMPT 2 ============
     with st.container(border=True):
         st.markdown(
             '<div class="section-label">Prompt / Model</div>',
             unsafe_allow_html=True
         )
 
-        p2c1, p2c2, p2c3 = st.columns(3)
-        with p2c1:
-            p2_material = st.selectbox("Material", MATERIALS, index=0, key="p2_mat")
-        with p2c2:
-            p2_item = st.selectbox("Item", ITEM_TYPES, index=0, key="p2_item")
-        with p2c3:
-            p2_bottom = st.selectbox("Trousers", BOTTOM_COLORS, index=0, key="p2_bottom")
+        c1, c2, c3 = st.columns(3)
+        material2 = c1.selectbox("Material", MATERIALS, key="p2_mat")
+        item2 = c2.selectbox("Item", ITEM_TYPES, key="p2_item")
+        bottom = c3.selectbox("Trousers", BOTTOM_COLORS, key="p2_bottom")
 
-        p2_html = (
+        p2 = (
             f'Fashion e-commerce photography, mid-shot of a model, wearing this '
-            f'<span class="hl">{p2_material}</span> '
-            f'<span class="hl">{p2_item}</span> and '
-            f'<span class="hl">{p2_bottom}</span> high-waist wide-leg trousers. '
+            f'<span class="hl">{material2}</span> '
+            f'<span class="hl">{item2}</span> and '
+            f'<span class="hl">{bottom}</span> high-waist wide-leg trousers. '
             f'Faceless framing, cropped at the chin, casual pose. '
             f'Clean light neutral grey studio background. Soft diffused lighting, minimalist aesthetic, '
             f'effortless chic, high contrast, sharp clothing details, photorealistic '
             f'--ar 3:4 --style raw'
         )
-        st.markdown(render_copyable(p2_html, "prompt2"), unsafe_allow_html=True)
+        st.markdown(copyable_block(p2, "prompt2"), unsafe_allow_html=True)
