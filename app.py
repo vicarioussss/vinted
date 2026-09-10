@@ -2,279 +2,310 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import html as html_lib
-import base64
-import os
 
 # ==================== CONFIG ====================
 st.set_page_config(
     page_title="my prompties",
-    page_icon="◼",
+    page_icon="🌙",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 MODEL_NAME = "gemini-3.7-flash"
 
-# ==================== BACKGROUND ====================
-# Локальный файл background.jpg конвертируем в base64, чтобы CSS мог его использовать
-def load_bg_data_url(path: str) -> str:
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-        return f"data:image/jpeg;base64,{b64}"
-    return ""  # если файла нет — фон просто чёрный
-
-CASTLE_BG_URL = load_bg_data_url("background.jpg")
-
 # ==================== STYLES ====================
-st.markdown(f"""
+st.markdown("""
 <style>
-    * {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-    /* ========== BASE BACKGROUND ========== */
-    html, body, .stApp {{
-        background-color: #000000;
-        color: #ededed;
-    }}
-    .stApp {{
-        background: #000000;
+    /* ========== BASE ========== */
+    html, body, .stApp {
+        background-color: #050505;
+        color: #c8c8c8;
+    }
+    .stApp {
+        background: #050505;
         background-attachment: fixed;
-    }}
+        overflow-x: hidden;
+    }
 
-    /* ========== BACKGROUND IMAGE LAYER ========== */
-    {"" if not CASTLE_BG_URL else f'''
-    .stApp::before {{
+    /* ========== FLOATING ORBS BACKGROUND ========== */
+    .orb-layer {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 0;
+    }
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        opacity: 0.32;
+        will-change: transform;
+    }
+    .orb-1 {
+        width: 520px; height: 520px;
+        background: radial-gradient(circle at 30% 30%, #e63946, #7a1a22 70%);
+        top: -120px; left: -100px;
+        animation: float1 22s ease-in-out infinite;
+    }
+    .orb-2 {
+        width: 460px; height: 460px;
+        background: radial-gradient(circle at 40% 40%, #2a9d8f, #14504a 70%);
+        top: 20%; right: -140px;
+        animation: float2 28s ease-in-out infinite;
+    }
+    .orb-3 {
+        width: 600px; height: 600px;
+        background: radial-gradient(circle at 50% 50%, #d4a373, #6b4f38 70%);
+        bottom: -180px; left: 25%;
+        animation: float3 32s ease-in-out infinite;
+    }
+    .orb-4 {
+        width: 380px; height: 380px;
+        background: radial-gradient(circle at 50% 50%, #6a4c93, #2d1e46 70%);
+        bottom: 10%; right: 15%;
+        animation: float4 26s ease-in-out infinite;
+    }
+    .orb-5 {
+        width: 300px; height: 300px;
+        background: radial-gradient(circle at 50% 50%, #457b9d, #1d3a4c 70%);
+        top: 45%; left: 40%;
+        animation: float2 30s ease-in-out infinite reverse;
+    }
+
+    @keyframes float1 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(80px, 60px) scale(1.15); }
+    }
+    @keyframes float2 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-70px, 90px) scale(1.1); }
+    }
+    @keyframes float3 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(60px, -80px) scale(1.2); }
+    }
+    @keyframes float4 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-90px, -50px) scale(1.08); }
+    }
+
+    /* Dark vignette to deepen edges */
+    .stApp::after {
         content: '';
         position: fixed;
         inset: 0;
-        background-image: url('{CASTLE_BG_URL}');
-        background-size: cover;
-        background-position: center center;
-        background-repeat: no-repeat;
-        opacity: 0.28;
+        background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.85) 100%);
         pointer-events: none;
         z-index: 0;
-        filter: saturate(0.95) brightness(0.85) contrast(1.05);
-    }}
-    '''}
+    }
 
-    /* dark vignette for depth */
-    .stApp::after {{
-        content: '';
-        position: fixed;
-        inset: 0;
-        background:
-            radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.80) 100%);
-        pointer-events: none;
-        z-index: 0;
-    }}
+    section[data-testid="stSidebar"] {
+        background: rgba(8, 8, 8, 0.75) !important;
+        backdrop-filter: blur(30px) saturate(120%);
+        -webkit-backdrop-filter: blur(30px) saturate(120%);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
 
-    section[data-testid="stSidebar"] {{
-        background: rgba(5, 5, 5, 0.70) !important;
-        backdrop-filter: blur(24px) saturate(120%);
-        -webkit-backdrop-filter: blur(24px) saturate(120%);
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
-    }}
+    h1, h2, h3, h4, h5, h6, p, span, label, div { color: #c8c8c8 !important; }
 
-    h1, h2, h3, h4, h5, h6, p, span, label, div {{ color: #ededed !important; }}
-
-    .block-container {{
+    .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 1.5rem !important;
         max-width: 1400px;
         position: relative;
-        z-index: 1;
-    }}
+        z-index: 2;
+    }
 
     /* ========== GLASS PANEL ========== */
-    [data-testid="stVerticalBlockBorderWrapper"] {{
-        background: linear-gradient(180deg, rgba(12, 14, 16, 0.62) 0%, rgba(6, 8, 10, 0.55) 100%) !important;
-        backdrop-filter: blur(40px) saturate(140%);
-        -webkit-backdrop-filter: blur(40px) saturate(140%);
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background: linear-gradient(180deg, rgba(22, 22, 24, 0.60) 0%, rgba(14, 14, 16, 0.55) 100%) !important;
+        backdrop-filter: blur(45px) saturate(130%);
+        -webkit-backdrop-filter: blur(45px) saturate(130%);
         border-radius: 16px !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.07) !important;
         box-shadow:
-            0 1px 0 rgba(255, 255, 255, 0.05) inset,
-            0 24px 70px rgba(0, 0, 0, 0.75) !important;
+            0 1px 0 rgba(255, 255, 255, 0.04) inset,
+            0 20px 60px rgba(0, 0, 0, 0.6) !important;
         padding: 22px 24px !important;
         position: relative;
         overflow: hidden;
-        z-index: 1;
-    }}
-    [data-testid="stVerticalBlockBorderWrapper"]::before {{
+        z-index: 2;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"]::before {
         content: '';
         position: absolute;
         top: 0;
         left: 20%;
         right: 20%;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.30), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
         pointer-events: none;
-    }}
+    }
 
     /* ========== SECTION LABEL ========== */
-    .section-label {{
+    .section-label {
         font-family: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
         font-size: 0.68rem;
         text-transform: uppercase;
         letter-spacing: 3px;
         font-weight: 500;
-        color: rgba(255, 255, 255, 0.50) !important;
+        color: rgba(200, 200, 200, 0.45) !important;
         padding-bottom: 14px;
         margin-bottom: 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         display: flex;
         align-items: center;
         gap: 8px;
-    }}
-    .section-label::before {{
+    }
+    .section-label::before {
         content: '';
         width: 5px;
         height: 5px;
-        background: #ffffff;
+        background: rgba(220, 220, 220, 0.85);
         border-radius: 50%;
-        box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
-    }}
+        box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+    }
 
     /* ========== BUTTONS ========== */
-    .stButton > button {{
+    .stButton > button {
         width: 100%;
-        background: #ffffff;
-        color: #000000 !important;
-        border: 1px solid #ffffff;
+        background: rgba(230, 230, 230, 0.92);
+        color: #1a1a1a !important;
+        border: 1px solid rgba(255, 255, 255, 0.6);
         border-radius: 12px;
         padding: 11px 22px;
         font-weight: 600;
         font-size: 0.86rem;
         letter-spacing: 0.3px;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }}
-    .stButton > button:hover {{
+    }
+    .stButton > button:hover {
         background: #ffffff;
         border-color: #ffffff;
         transform: translateY(-1px);
-        box-shadow: 0 0 24px rgba(255, 255, 255, 0.28);
-    }}
-    .stButton > button:active {{ transform: translateY(0); }}
-    .stButton > button p, .stButton > button span {{ color: #000000 !important; }}
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.18);
+    }
+    .stButton > button:active { transform: translateY(0); }
+    .stButton > button p, .stButton > button span { color: #1a1a1a !important; }
 
     /* ========== INPUTS ========== */
-    .stTextInput input {{
+    .stTextInput input {
         background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(255, 255, 255, 0.10) !important;
+        border: 1px solid rgba(255, 255, 255, 0.09) !important;
         border-radius: 10px !important;
-        color: #ededed !important;
+        color: #c8c8c8 !important;
         font-size: 0.88rem;
         padding: 10px 14px !important;
         transition: all 0.2s ease;
-    }}
-    .stTextInput input:focus {{
-        border-color: rgba(255, 255, 255, 0.35) !important;
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05) !important;
-    }}
-    .stTextInput input::placeholder {{ color: rgba(237, 237, 237, 0.3) !important; }}
+    }
+    .stTextInput input:focus {
+        border-color: rgba(255, 255, 255, 0.25) !important;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04) !important;
+    }
+    .stTextInput input::placeholder { color: rgba(200, 200, 200, 0.3) !important; }
 
     /* ========== SELECTBOXES ========== */
-    .stSelectbox label {{
+    .stSelectbox label {
         font-family: 'JetBrains Mono', 'SF Mono', monospace !important;
         font-size: 0.62rem !important;
         text-transform: uppercase;
         letter-spacing: 1.6px;
-        color: rgba(255, 255, 255, 0.45) !important;
+        color: rgba(200, 200, 200, 0.45) !important;
         margin-bottom: 4px !important;
-    }}
-    .stSelectbox div[data-baseweb="select"] > div {{
+    }
+    .stSelectbox div[data-baseweb="select"] > div {
         background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(255, 255, 255, 0.10) !important;
+        border: 1px solid rgba(255, 255, 255, 0.09) !important;
         border-radius: 10px !important;
-        color: #ededed !important;
+        color: #c8c8c8 !important;
         min-height: 38px !important;
         font-size: 0.86rem;
         transition: all 0.2s ease;
-    }}
-    .stSelectbox div[data-baseweb="select"] > div:hover {{
-        border-color: rgba(255, 255, 255, 0.22) !important;
-        background: rgba(255, 255, 255, 0.06) !important;
-    }}
-    div[data-baseweb="popover"] div[role="listbox"] {{
-        background: #0a0a0a !important;
+    }
+    .stSelectbox div[data-baseweb="select"] > div:hover {
+        border-color: rgba(255, 255, 255, 0.18) !important;
+        background: rgba(255, 255, 255, 0.055) !important;
+    }
+    div[data-baseweb="popover"] div[role="listbox"] {
+        background: #0e0e0e !important;
         border-radius: 10px !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border: 1px solid rgba(255, 255, 255, 0.10) !important;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9) !important;
-    }}
-    div[data-baseweb="popover"] li {{ font-size: 0.86rem !important; }}
-    div[data-baseweb="popover"] li:hover {{
+    }
+    div[data-baseweb="popover"] li { font-size: 0.86rem !important; }
+    div[data-baseweb="popover"] li:hover {
         background: rgba(255, 255, 255, 0.06) !important;
-    }}
+    }
 
     /* ========== FILE UPLOADER ========== */
-    section[data-testid="stFileUploaderDropzone"] {{
+    section[data-testid="stFileUploaderDropzone"] {
         background: rgba(255, 255, 255, 0.02) !important;
-        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+        border: 1px dashed rgba(255, 255, 255, 0.14) !important;
         border-radius: 12px !important;
         padding: 14px !important;
         min-height: auto !important;
         transition: all 0.2s ease;
-    }}
-    section[data-testid="stFileUploaderDropzone"]:hover {{
-        border-color: rgba(255, 255, 255, 0.3) !important;
-        background: rgba(255, 255, 255, 0.04) !important;
-    }}
-    section[data-testid="stFileUploaderDropzone"] svg {{ fill: rgba(255,255,255,0.5) !important; }}
-    section[data-testid="stFileUploaderDropzone"] button {{
-        background: rgba(255, 255, 255, 0.06) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    section[data-testid="stFileUploaderDropzone"]:hover {
+        border-color: rgba(255, 255, 255, 0.25) !important;
+        background: rgba(255, 255, 255, 0.035) !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] svg { fill: rgba(200,200,200,0.55) !important; }
+    section[data-testid="stFileUploaderDropzone"] button {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.13) !important;
         border-radius: 8px !important;
-        color: #ededed !important;
+        color: #c8c8c8 !important;
         padding: 5px 14px !important;
         font-size: 0.8rem !important;
-    }}
-    section[data-testid="stFileUploaderDropzone"] button:hover {{
-        background: rgba(255, 255, 255, 0.12) !important;
-        border-color: rgba(255, 255, 255, 0.3) !important;
-    }}
+    }
+    section[data-testid="stFileUploaderDropzone"] button:hover {
+        background: rgba(255, 255, 255, 0.10) !important;
+        border-color: rgba(255, 255, 255, 0.25) !important;
+    }
 
-    /* ========== HIDE STREAMLIT CHROME ========== */
-    header[data-testid="stHeader"] {{ background: transparent; }}
-    #MainMenu, footer {{ visibility: hidden; }}
+    /* ========== HIDE CHROME ========== */
+    header[data-testid="stHeader"] { background: transparent; }
+    #MainMenu, footer { visibility: hidden; }
 
-    /* ============================================================
-       ========== COPYABLE TEXT BLOCKS ==========
-       ============================================================ */
+    /* ========== COPYABLE TEXT BLOCKS ========== */
     .copyable,
-    .result-wrap {{
+    .result-wrap {
         background: transparent;
         border: none;
-        border-left: 1px solid rgba(255, 255, 255, 0.18);
+        border-left: 1px solid rgba(200, 200, 200, 0.20);
         border-radius: 0;
         padding: 2px 4px 2px 16px;
         margin-top: 18px;
-        margin-bottom: 32px;              /* ← больше воздуха снизу */
+        margin-bottom: 32px;
         font-family: 'Inter', -apple-system, sans-serif;
         font-size: 0.88rem;
         line-height: 1.65;
         white-space: pre-wrap;
         word-break: break-word;
-        color: #d8d8d8;
+        color: #b8b8b8;
         overflow: hidden;
-    }}
-    .copyable .hl {{
-        color: #ffffff;
+    }
+    .copyable .hl {
+        color: #e8e8e8;
         font-weight: 600;
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.07);
         padding: 1px 6px;
         border-radius: 4px;
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.84rem;
-    }}
+    }
 
     /* ========== COPY ICON ========== */
-    .copy-icon {{
+    .copy-icon {
         float: right;
         margin: 0 0 4px 10px;
         background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        color: rgba(200, 200, 200, 0.7);
         border-radius: 7px;
         width: 26px;
         height: 26px;
@@ -286,37 +317,46 @@ st.markdown(f"""
         justify-content: center;
         padding: 0;
         transition: all 0.15s ease;
-    }}
-    .copy-icon:hover {{
-        background: rgba(255, 255, 255, 0.14);
-        border-color: rgba(255, 255, 255, 0.28);
-        color: #ffffff;
-    }}
-    .copy-icon:active {{ transform: scale(0.92); }}
+    }
+    .copy-icon:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.22);
+        color: #e0e0e0;
+    }
+    .copy-icon:active { transform: scale(0.92); }
 
     /* ========== SIDEBAR CAPTION ========== */
     section[data-testid="stSidebar"] .stCaption,
-    section[data-testid="stSidebar"] small {{
+    section[data-testid="stSidebar"] small {
         font-family: 'JetBrains Mono', monospace !important;
         font-size: 0.7rem !important;
-        color: rgba(255, 255, 255, 0.35) !important;
+        color: rgba(200, 200, 200, 0.35) !important;
         letter-spacing: 0.5px;
-    }}
+    }
 
     /* ========== SPINNER ========== */
-    .stSpinner > div {{
-        border-color: rgba(255, 255, 255, 0.15) !important;
-        border-top-color: #ffffff !important;
-    }}
+    .stSpinner > div {
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        border-top-color: #c8c8c8 !important;
+    }
 
     /* ========== ALERTS ========== */
-    .stAlert {{
-        background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    .stAlert {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 10px !important;
-        color: #ededed !important;
-    }}
+        color: #c8c8c8 !important;
+    }
 </style>
+
+<!-- Floating orbs -->
+<div class="orb-layer">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+    <div class="orb orb-5"></div>
+</div>
 """, unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
