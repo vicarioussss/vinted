@@ -2,203 +2,284 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import io
-import urllib.parse
-import requests
 
-st.set_page_config(page_title="Fashion Generator", page_icon="👗", layout="wide")
-st.title("👗 Генерация карточек товаров")
+# ==================== КОНФИГ ====================
+st.set_page_config(
+    page_title="AI Fashion Descriptions",
+    page_icon="✨",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# ---------- Боковая панель ----------
+# ==================== GLASSMORPHISM СТИЛЬ ====================
+st.markdown("""
+<style>
+    /* ---------- Фон: градиент + мягкие пятна ---------- */
+    .stApp {
+        background:
+            radial-gradient(circle at 15% 20%, rgba(255, 154, 158, 0.45), transparent 45%),
+            radial-gradient(circle at 85% 15%, rgba(161, 196, 253, 0.45), transparent 45%),
+            radial-gradient(circle at 50% 85%, rgba(186, 156, 255, 0.40), transparent 45%),
+            radial-gradient(circle at 80% 80%, rgba(120, 219, 226, 0.40), transparent 50%),
+            linear-gradient(135deg, #1b1b2f 0%, #2a2a44 50%, #1f1f33 100%);
+        background-attachment: fixed;
+        color: #f2f2f7;
+    }
+
+    /* Прячем стандартный фон сайдбара и красим под стекло */
+    section[data-testid="stSidebar"] {
+        background: rgba(255, 255, 255, 0.06) !important;
+        backdrop-filter: blur(18px) saturate(160%);
+        -webkit-backdrop-filter: blur(18px) saturate(160%);
+        border-right: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Заголовки */
+    h1, h2, h3, h4, h5, h6, p, span, label, div {
+        color: #f2f2f7 !important;
+    }
+
+    /* ---------- Стеклянные контейнеры ---------- */
+    .glass {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.20);
+        padding: 24px 28px;
+        margin-bottom: 20px;
+    }
+
+    /* ---------- Кнопки ---------- */
+    .stButton > button {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 14px;
+        padding: 12px 20px;
+        font-weight: 600;
+        font-size: 1rem;
+        letter-spacing: 0.3px;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        transition: all 0.25s ease;
+    }
+    .stButton > button:hover {
+        background: rgba(255, 255, 255, 0.22);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.45);
+    }
+    .stDownloadButton > button {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 14px;
+        padding: 10px 20px;
+        backdrop-filter: blur(12px);
+    }
+    .stDownloadButton > button:hover {
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    /* ---------- Поля ввода ---------- */
+    .stTextInput input,
+    .stTextArea textarea,
+    .stSelectbox div[data-baseweb="select"] > div {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.20) !important;
+        border-radius: 12px !important;
+        color: #ffffff !important;
+        backdrop-filter: blur(12px);
+    }
+
+    /* ---------- File uploader ---------- */
+    section[data-testid="stFileUploaderDropzone"] {
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 2px dashed rgba(255, 255, 255, 0.30) !important;
+        border-radius: 18px !important;
+        backdrop-filter: blur(14px);
+    }
+
+    /* ---------- Вкладки ---------- */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: rgba(255,255,255,0.05);
+        padding: 6px;
+        border-radius: 14px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 10px;
+        color: #e5e5ee;
+    }
+    .stTabs [aria-selected="true"] {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+    }
+
+    /* ---------- Блок результата ---------- */
+    .result-box {
+        background: rgba(255, 255, 255, 0.07);
+        backdrop-filter: blur(22px) saturate(160%);
+        -webkit-backdrop-filter: blur(22px) saturate(160%);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow:
+            0 12px 40px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        padding: 26px 30px;
+        margin-top: 16px;
+        white-space: pre-wrap;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 0.98rem;
+        line-height: 1.6;
+        color: #f5f5fa;
+    }
+
+    /* Скрыть верхний декор Streamlit */
+    header[data-testid="stHeader"] { background: transparent; }
+    #MainMenu, footer { visibility: hidden; }
+</style>
+""", unsafe_allow_html=True)
+
+# ==================== БОКОВАЯ ПАНЕЛЬ ====================
 with st.sidebar:
-    st.header("Настройки")
-    api_key = st.text_input("🔑 Google Gemini API Key", type="password",
-                            help="Нужен для вкладки «Описание». Для картинок можно использовать Pollinations (бесплатно).")
+    st.markdown("### ✨ AI Fashion Studio")
+    st.markdown("---")
 
-    st.subheader("🖼️ Генератор изображений")
-    image_backend = st.radio(
-        "Движок",
-        options=["Pollinations (бесплатно, без ключа)", "Gemini (нужен биллинг)"],
-        index=0,
-        help="Pollinations работает без API-ключа и бесплатно. Gemini требует включённого биллинга Google Cloud."
+    api_key = st.text_input(
+        "🔑 Google Gemini API Key",
+        type="password",
+        placeholder="Введите ваш ключ...",
+        help="Получить ключ: https://aistudio.google.com/apikey"
     )
 
-    if image_backend.startswith("Gemini"):
-        img_model_name = st.selectbox(
-            "Модель Gemini для изображений",
-            options=[
-                "models/gemini-2.5-flash-image",
-                "models/gemini-3.1-flash-image",
-                "models/gemini-3-pro-image",
-            ],
-            index=0
-        )
-    else:
-        img_model_name = None
-        st.caption("Pollinations не требует ключа и работает без ограничений.")
+    text_model = st.selectbox(
+        "📝 Модель Gemini",
+        options=["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.7-flash", "gemini-2.5-flash", "gemini-1.5-pro"],
+        index=0,
+        help="Для текстового анализа подойдёт любая из этих моделей."
+    )
 
     st.markdown("---")
-    st.subheader("📝 Модель для описания")
-    text_model = st.selectbox(
-        "Gemini для текста",
-        options=["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"],
-        index=0
-    )
+    with st.expander("ℹ️ Как пользоваться"):
+        st.markdown("""
+        1. Вставьте **API-ключ** Google Gemini.  
+        2. Загрузите **скриншот** с информацией о вещи  
+           (бренд, состав, мерки, состояние).  
+        3. Нажмите **«Сгенерировать описание»**.  
+        4. Скопируйте или скачайте готовый текст.
+        """)
 
-# ---------- Утилиты ----------
-def generate_image_pollinations(prompt: str, width=768, height=1024) -> Image.Image | None:
-    """Генерация изображения через бесплатный Pollinations.ai"""
-    try:
-        encoded = urllib.parse.quote(prompt)
-        url = f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&nologo=true&model=flux"
-        resp = requests.get(url, timeout=60)
-        resp.raise_for_status()
-        return Image.open(io.BytesIO(resp.content))
-    except Exception as e:
-        st.error(f"Ошибка Pollinations: {e}")
-        return None
+# ==================== ЗАГОЛОВОК ====================
+st.markdown("""
+<div class="glass" style="text-align:center;">
+    <h1 style="margin:0; font-size:2.2rem; letter-spacing:1px;">👗 AI Fashion Description</h1>
+    <p style="margin-top:8px; opacity:0.85; font-size:1.05rem;">
+        Превратите скриншот с данными о вещи в готовое продающее описание
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
-def generate_image_gemini(prompt, ref_image, model_name, api_key):
-    """Генерация изображения через Gemini (нужен биллинг)."""
-    try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(model_name)
-        content = [prompt, ref_image] if ref_image else prompt
-        try:
-            response = model.generate_content(
-                content,
-                generation_config=genai.types.GenerateContentConfig(response_modalities=["IMAGE"])
-            )
-        except (AttributeError, TypeError):
-            response = model.generate_content(
-                content,
-                generation_config={"response_modalities": ["IMAGE"]}
-            )
-        for part in response.parts:
-            if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-                return Image.open(io.BytesIO(part.inline_data.data))
-        st.warning("Gemini не вернул изображение. Возможно, квота исчерпана или контент заблокирован.")
-        return None
-    except Exception as e:
-        err = str(e)
-        if "429" in err or "Quota exceeded" in err:
-            st.error("❌ Превышена квота Gemini (429). Включите биллинг или используйте Pollinations.")
-        else:
-            st.error(f"Ошибка Gemini: {e}")
-        return None
+# ==================== ПРОМПТ ====================
+DESCRIPTION_PROMPT = """Ты — профессиональный копирайтер для онлайн-магазина винтажной и брендовой одежды.
 
-def generate_description(prompt, screenshot, model_name, api_key):
+Проанализируй скриншот с информацией о вещи и составь карточку товара СТРОГО в таком формате (без каких-либо вводных фраз, без markdown-разметки кроме переносов строк):
+
+НАЗВАНИЕ
+Полное название товара: бренд + состав/материал + цвет + ключевая особенность (воротник, крой и т.п.) + тип вещи + размер. Например:
+"Peter Nygård 100% Wool Red Mandarin Collar Blazer – Size 38 / M"
+
+ОПИСАНИЕ
+Одно ёмкое абзацное описание (3–5 предложений) на английском языке. Опиши материал, крой, детали (воротник, пуговицы, отделка), цвет, стиль и уместность (сезон, повод). Пиши привлекательно и продающе, как для Instagram/сайта.
+
+ДЕТАЛИ
+Brand: <бренд>
+Size: <размер> (<мерки, если указаны: shoulder width, sleeve length, chest, length>)
+Material: <состав, с процентами и оригинальным названием в скобках, если есть>
+Condition: <состояние — например, "Good pre-owned condition" или точное описание>
+
+KEYWORDS
+Список из 10–15 ключевых слов через запятую в одну строку (lowercase, для SEO и поиска в Instagram). Включи: бренд, материал, цвет, тип одежды, стиль, особенности (collar, piping, buttons и т.п.).
+
+ВАЖНО:
+- Если каких-то данных нет на скриншоте — не выдумывай, пропусти или напиши "—".
+- Описание и ключевые слова — на английском языке. Название — тоже на английском.
+- Никаких вступлений, комментариев и объяснений — только готовая карточка в описанном формате.
+"""
+
+# ==================== ФУНКЦИЯ ГЕНЕРАЦИИ ====================
+def generate_description(prompt: str, screenshot: Image.Image, model_name: str, api_key: str) -> str | None:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name)
         response = model.generate_content([prompt, screenshot])
         return response.text
     except Exception as e:
-        st.error(f"Ошибка генерации описания: {e}")
+        st.error(f"❌ Ошибка при вызове API: {e}")
         return None
 
-# ---------- Вкладки ----------
-tab1, tab2 = st.tabs(["🖼️ Генерация изображений", "📝 Генерация описания"])
+# ==================== ОСНОВНОЙ БЛОК ====================
+col1, col2 = st.columns([1, 1], gap="large")
 
-# ============ ВКЛАДКА 1 ============
-with tab1:
-    st.header("Генерация изображений")
-
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        uploaded_file = st.file_uploader("📤 Загрузите фото вещи (референс)", type=["jpg", "jpeg", "png"])
-        ref_image = None
-        if uploaded_file:
-            try:
-                ref_image = Image.open(uploaded_file)
-                st.image(ref_image, caption="Референс", use_container_width=True)
-            except Exception as e:
-                st.error(f"Ошибка загрузки: {e}")
-
-    with col2:
-        material = st.selectbox("Материал", ["leather", "wool", "cotton", "silk", "polyester", "denim"], index=0)
-        item_type = st.selectbox("Тип вещи", ["blazer", "jacket", "coat", "dress", "skirt", "trousers", "shirt"], index=0)
-        mannequin_part = st.selectbox("Часть манекена", ["torso", "full body"], index=0)
-
-        if st.button("🚀 Сгенерировать фото", use_container_width=True):
-            prompt_mannequin = (
-                f"Studio photo of a {material} {item_type} on a headless mannequin {mannequin_part}, "
-                f"plain dark background, soft studio lighting, photorealistic, high detail"
-            )
-            prompt_model = (
-                f"Fashion e-commerce photo, mid-shot of a model wearing a {material} {item_type} "
-                f"and black high-waist wide-leg trousers, faceless framing, clean light grey background, "
-                f"soft diffused light, minimalist, photorealistic"
-            )
-
-            if image_backend.startswith("Pollinations"):
-                with st.spinner("Генерация через Pollinations..."):
-                    img1 = generate_image_pollinations(prompt_mannequin, 768, 1024)
-                    img2 = generate_image_pollinations(prompt_model, 768, 1024)
-            else:
-                if not api_key:
-                    st.error("Введите API-ключ или переключитесь на Pollinations.")
-                    img1 = img2 = None
-                else:
-                    with st.spinner("Генерация через Gemini..."):
-                        img1 = generate_image_gemini(prompt_mannequin, ref_image, img_model_name, api_key)
-                        img2 = generate_image_gemini(prompt_model, ref_image, img_model_name, api_key)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("🧍 Манекен")
-                if img1:
-                    st.image(img1, use_container_width=True)
-                    buf = io.BytesIO(); img1.save(buf, "PNG")
-                    st.download_button("📥 Скачать", buf.getvalue(), "mannequin.png", "image/png")
-                else:
-                    st.info("Не удалось сгенерировать.")
-            with c2:
-                st.subheader("👩 Модель")
-                if img2:
-                    st.image(img2, use_container_width=True)
-                    buf = io.BytesIO(); img2.save(buf, "PNG")
-                    st.download_button("📥 Скачать", buf.getvalue(), "model.png", "image/png")
-                else:
-                    st.info("Не удалось сгенерировать.")
-
-# ============ ВКЛАДКА 2 ============
-with tab2:
-    st.header("Генерация описания")
-
-    uploaded_screenshot = st.file_uploader("📸 Загрузите скриншот с данными о вещи", type=["jpg", "jpeg", "png"])
+with col1:
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
+    st.markdown("#### 📸 Скриншот с данными о вещи")
+    uploaded_screenshot = st.file_uploader(
+        "Загрузите изображение",
+        type=["jpg", "jpeg", "png", "webp"],
+        label_visibility="collapsed"
+    )
     screenshot = None
     if uploaded_screenshot:
         try:
             screenshot = Image.open(uploaded_screenshot)
-            st.image(screenshot, caption="Скриншот", use_container_width=True)
+            st.image(screenshot, caption="Загруженный скриншот", use_container_width=True)
         except Exception as e:
-            st.error(f"Ошибка загрузки: {e}")
+            st.error(f"Не удалось открыть изображение: {e}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    description_prompt = (
-        "Проанализируй данный скриншот с информацией о вещи. "
-        "Извлеки все ключевые данные (бренд, состав, замеры, состояние, особенности) "
-        "и составь привлекательное, структурированное и продающее описание товара "
-        "для онлайн-магазина одежды в Instagram/на сайте. "
-        "Используй эмодзи, списки и четкие блоки (Описание, Состав, Замеры, Стиль)."
-    )
+with col2:
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
+    st.markdown("#### ⚙️ Управление")
 
     if st.button("✨ Сгенерировать описание", use_container_width=True):
         if not api_key:
-            st.error("❌ Введите Gemini API-ключ.")
-        elif not screenshot:
-            st.error("❌ Загрузите скриншот.")
+            st.error("❌ Введите API-ключ в боковой панели.")
+        elif screenshot is None:
+            st.error("❌ Загрузите скриншот с информацией о вещи.")
         else:
             with st.spinner("Генерируем описание..."):
-                desc = generate_description(description_prompt, screenshot, text_model, api_key)
+                desc = generate_description(DESCRIPTION_PROMPT, screenshot, text_model, api_key)
                 if desc:
-                    st.session_state["description_text"] = desc
+                    st.session_state["description_text"] = desc.strip()
 
     if st.session_state.get("description_text"):
-        st.markdown("### 📝 Готовое описание")
-        st.code(st.session_state["description_text"], language="markdown", wrap_lines=True)
         st.download_button(
-            "📥 Скачать описание (TXT)",
-            st.session_state["description_text"],
-            "description.txt",
-            "text/plain"
+            label="📥 Скачать описание (TXT)",
+            data=st.session_state["description_text"],
+            file_name="description.txt",
+            mime="text/plain",
+            use_container_width=True
         )
+    else:
+        st.caption("Результат появится ниже после генерации.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ==================== РЕЗУЛЬТАТ ====================
+if st.session_state.get("description_text"):
+    st.markdown("### 📝 Готовое описание")
+    st.markdown(
+        f'<div class="result-box">{st.session_state["description_text"]}</div>',
+        unsafe_allow_html=True
+    )
+
+    # Скрытое поле для быстрого копирования
+    with st.expander("📋 Скопировать текст (нажмите, чтобы раскрыть)"):
+        st.code(st.session_state["description_text"], language=None)
