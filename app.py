@@ -3,9 +3,16 @@ import google.generativeai as genai
 from PIL import Image
 import html as html_lib
 
+WHITE_MOON = (
+    "data:image/svg+xml,"
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E"
+    "%3Cpath fill='%23ffffff' d='M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'/%3E"
+    "%3C/svg%3E"
+)
+
 st.set_page_config(
     page_title="my prompties",
-    page_icon="🌙",
+    page_icon=WHITE_MOON,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -394,7 +401,7 @@ STRICT RULES:
 - Output ONLY the product card. No section labels.
 - Only ONE blank line in the entire output — between the Condition line and the keywords.
 - No other blank lines anywhere.
-- If a field is missing on the screenshot, write "—".
+- If a field (Brand, Size, Material, Condition) has NO information on the screenshot, OMIT that entire line completely. Never write "—", "-", "N/A" or any placeholder.
 - Everything must be in English.
 """
 
@@ -434,15 +441,14 @@ with left:
         uploaded = st.file_uploader(
             "Screenshot",
             type=["jpg", "jpeg", "png", "webp"],
-            label_visibility="collapsed",
-            key="desc_upload"
+            label_visibility="collapsed"
         )
 
         screenshot = None
         if uploaded:
             try:
                 screenshot = Image.open(uploaded)
-                st.image(screenshot, use_container_width=True)
+                st.image(screenshot, width=120)
             except Exception as e:
                 st.error(f"Cannot open image: {e}")
 
