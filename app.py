@@ -36,8 +36,8 @@ st.markdown("""
     h1, h2, h3, h4, h5, p, span, label, div { color: #eef2e6 !important; }
 
     .block-container {
-        padding-top: 1.6rem !important;
-        padding-bottom: 1.5rem !important;
+        padding-top: 1.2rem !important;
+        padding-bottom: 1.2rem !important;
         max-width: 1400px;
     }
 
@@ -46,44 +46,34 @@ st.markdown("""
         background: rgba(215, 230, 200, 0.10);
         backdrop-filter: blur(28px) saturate(160%);
         -webkit-backdrop-filter: blur(28px) saturate(160%);
-        border-radius: 20px;
+        border-radius: 18px;
         border: 1px solid rgba(255, 255, 255, 0.16);
         box-shadow:
             0 12px 40px rgba(0, 0, 0, 0.35),
             inset 0 1px 0 rgba(255, 255, 255, 0.16);
-        padding: 20px 22px;
+        padding: 18px 20px;
     }
 
-    /* ---------- Section heading ---------- */
-    .section-heading {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding-bottom: 10px;
-        margin-bottom: 14px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.22);
-    }
-    .section-heading .hamburger {
-        font-size: 15px;
-        letter-spacing: -2px;
-        opacity: 0.9;
-    }
-    .section-heading .heading-text {
+    /* ---------- Plain section label (no decoration) ---------- */
+    .section-label {
         font-size: 0.72rem;
         text-transform: uppercase;
-        letter-spacing: 2.4px;
+        letter-spacing: 2.2px;
         font-weight: 500;
-        opacity: 0.95;
+        opacity: 0.65;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     }
 
-    /* ---------- Buttons ---------- */
+    /* ---------- Buttons (rectangular, not pill) ---------- */
     .stButton > button {
         width: 100%;
         background: rgba(255, 255, 255, 0.10);
         color: #eef2e6;
-        border: 1px solid rgba(255, 255, 255, 0.32);
-        border-radius: 999px;
-        padding: 10px 22px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 10px;
+        padding: 9px 20px;
         font-weight: 500;
         font-size: 0.86rem;
         letter-spacing: 0.5px;
@@ -91,8 +81,8 @@ st.markdown("""
         backdrop-filter: blur(10px);
     }
     .stButton > button:hover {
-        background: rgba(255, 255, 255, 0.22);
-        border-color: rgba(255, 255, 255, 0.55);
+        background: rgba(255, 255, 255, 0.20);
+        border-color: rgba(255, 255, 255, 0.50);
         transform: translateY(-1px);
     }
 
@@ -105,12 +95,12 @@ st.markdown("""
     }
     .stTextInput input::placeholder { color: rgba(238, 242, 230, 0.45) !important; }
 
-    /* ---------- Selectboxes (compact) ---------- */
+    /* ---------- Selectboxes ---------- */
     .stSelectbox label {
-        font-size: 0.68rem !important;
+        font-size: 0.66rem !important;
         text-transform: uppercase;
-        letter-spacing: 1.4px;
-        opacity: 0.7;
+        letter-spacing: 1.3px;
+        opacity: 0.6;
         margin-bottom: 2px !important;
     }
     .stSelectbox div[data-baseweb="select"] > div {
@@ -118,44 +108,46 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.16) !important;
         border-radius: 10px !important;
         color: #eef2e6 !important;
-        min-height: 36px !important;
+        min-height: 34px !important;
         font-size: 0.86rem;
     }
     div[data-baseweb="popover"] div[role="listbox"] {
-        background: rgba(30, 45, 25, 0.95) !important;
+        background: rgba(30, 45, 25, 0.96) !important;
         backdrop-filter: blur(18px);
         border-radius: 10px !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
 
-    /* ---------- File uploader ---------- */
+    /* ---------- File uploader (compact) ---------- */
     section[data-testid="stFileUploaderDropzone"] {
         background: rgba(255, 255, 255, 0.05) !important;
         border: 1.5px dashed rgba(255, 255, 255, 0.26) !important;
-        border-radius: 14px !important;
+        border-radius: 12px !important;
         backdrop-filter: blur(12px);
-        padding: 12px !important;
+        padding: 10px 14px !important;
+        min-height: auto !important;
     }
     section[data-testid="stFileUploaderDropzone"] svg { fill: #c8d6b8 !important; }
     section[data-testid="stFileUploaderDropzone"] button {
         background: rgba(255, 255, 255, 0.10) !important;
-        border: 1px solid rgba(255, 255, 255, 0.30) !important;
-        border-radius: 999px !important;
+        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        border-radius: 8px !important;
         color: #eef2e6 !important;
+        padding: 4px 12px !important;
     }
 
     /* ---------- Hide Streamlit chrome ---------- */
     header[data-testid="stHeader"] { background: transparent; }
     #MainMenu, footer { visibility: hidden; }
 
-    /* ---------- Result / prompt blocks with copy icon ---------- */
-    .copyable {
-        position: relative;
+    /* ---------- Copyable blocks (float icon) ---------- */
+    .copyable,
+    .result-wrap {
         background: rgba(215, 230, 200, 0.06);
         backdrop-filter: blur(20px) saturate(160%);
-        border-radius: 14px;
+        border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.14);
-        padding: 16px 40px 16px 18px;
+        padding: 14px 16px;
         margin-top: 10px;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         font-size: 0.88rem;
@@ -163,17 +155,19 @@ st.markdown("""
         white-space: pre-wrap;
         word-break: break-word;
         color: #f0f5e8;
+        overflow: hidden; /* contain the floated button */
     }
     .copyable .hl {
         color: #b8e08c;
         font-weight: 600;
     }
+
+    /* Copy icon floats right → text wraps around it */
     .copy-icon {
-        position: absolute;
-        top: 8px;
-        right: 8px;
+        float: right;
+        margin: 0 0 6px 12px;
         background: rgba(255, 255, 255, 0.10);
-        border: 1px solid rgba(255, 255, 255, 0.20);
+        border: 1px solid rgba(255, 255, 255, 0.22);
         color: #e8eed8;
         border-radius: 7px;
         width: 26px;
@@ -189,23 +183,6 @@ st.markdown("""
     }
     .copy-icon:hover { background: rgba(255, 255, 255, 0.22); }
     .copy-icon:active { transform: scale(0.92); }
-
-    /* ---------- Description result variant ---------- */
-    .result-wrap {
-        position: relative;
-        background: rgba(215, 230, 200, 0.08);
-        backdrop-filter: blur(22px) saturate(160%);
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        padding: 16px 40px 16px 18px;
-        margin-top: 12px;
-        font-family: 'Inter', sans-serif;
-        font-size: 0.88rem;
-        line-height: 1.55;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: #f0f5e8;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -214,7 +191,6 @@ if "gemini_api_key" not in st.session_state:
     st.session_state["gemini_api_key"] = ""
 
 with st.sidebar:
-    st.markdown("#### 🌿 Settings")
     st.text_input(
         "Gemini API Key",
         type="password",
@@ -240,19 +216,17 @@ function copyBlock(id, btn) {
 """
 
 def render_copyable(html_content: str, block_id: str) -> str:
-    """Wrap HTML content in a glass block with a copy icon."""
     return f'''
     <div class="copyable" id="{block_id}">
         <button class="copy-icon" title="Copy"
-            onclick="copyBlock('{block_id}', this)">⧉</button>
-        {html_content}
+            onclick="copyBlock('{block_id}', this)">⧉</button>{html_content}
     </div>
     '''
 
-# ==================== PROMPTS ====================
+# ==================== PROMPT OPTIONS ====================
 MATERIALS = ["wool", "silk", "suede", "leather"]
 ITEM_TYPES = ["blazer", "dress", "coat", "top", "skirt"]
-MANNEQUIN_PARTS = ["torso", "full body"]
+MANNEQUIN_PARTS = ["torso", "-"]
 BOTTOM_COLORS = ["black", "white", "beige", "grey"]
 
 # ==================== DESCRIPTION PROMPT ====================
@@ -304,10 +278,7 @@ with left:
     st.markdown('<div class="glass">', unsafe_allow_html=True)
 
     st.markdown(
-        '<div class="section-heading">'
-        '<span class="hamburger">≡</span>'
-        '<span class="heading-text">Generate Description</span>'
-        '</div>',
+        '<div class="section-label">Generate Description</div>',
         unsafe_allow_html=True
     )
 
@@ -346,8 +317,7 @@ with left:
             f'''
             <div class="result-wrap" id="result-block">
                 <button class="copy-icon" title="Copy"
-                    onclick="copyBlock('result-block', this)">⧉</button>
-                <div>{safe}</div>
+                    onclick="copyBlock('result-block', this)">⧉</button>{safe}
             </div>
             ''',
             unsafe_allow_html=True
@@ -361,10 +331,7 @@ with right:
     # ============ PROMPT 1 ============
     st.markdown('<div class="glass">', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-heading">'
-        '<span class="hamburger">≡</span>'
-        '<span class="heading-text">Prompt — Mannequin</span>'
-        '</div>',
+        '<div class="section-label">Prompt — Mannequin</div>',
         unsafe_allow_html=True
     )
 
@@ -388,15 +355,12 @@ with right:
     st.markdown(render_copyable(p1_html, "prompt1"), unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
 
     # ============ PROMPT 2 ============
     st.markdown('<div class="glass">', unsafe_allow_html=True)
     st.markdown(
-        '<div class="section-heading">'
-        '<span class="hamburger">≡</span>'
-        '<span class="heading-text">Prompt — Model</span>'
-        '</div>',
+        '<div class="section-label">Prompt — Model</div>',
         unsafe_allow_html=True
     )
 
