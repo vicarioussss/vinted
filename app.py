@@ -2,185 +2,203 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import io
-import re
-import time
+import urllib.parse
+import requests
 
 st.set_page_config(page_title="Fashion Generator", page_icon="👗", layout="wide")
-st.title("👗 Генерация изображений одежды")
+st.title("👗 Генерация карточек товаров")
 
-# Список моделей для генерации изображений (от более дешёвых к более дорогим)
-IMAGE_MODELS = [
-    "models/gemini-3.1-flash-image",      # рекомендую для экономии квоты
-    "models/gemini-2.5-flash-image",
-    "models/gemini-3.1-flash-image-preview",
-    "models/gemini-3-pro-image-preview",
-    "models/gemini-3-pro-image",
-    "models/nano-banana-pro-preview",
-]
-
-# Инициализация сессионных переменных
-if "generation_count" not in st.session_state:
-    st.session_state.generation_count = 0
-if "last_quota_error" not in st.session_state:
-    st.session_state.last_quota_error = None
-
+# ---------- Боковая панель ----------
 with st.sidebar:
     st.header("Настройки")
-    api_key = st.text_input("🔑 Google Gemini API Key", type="password", placeholder="Введите ключ...")
-    
-    # Выбор модели
-    img_model_name = st.selectbox(
-        "🖼️ Модель для генерации изображений",
-        options=IMAGE_MODELS,
+    api_key = st.text_input("🔑 Google Gemini API Key", type="password",
+                            help="Нужен для вкладки «Описание». Для картинок можно использовать Pollinations (бесплатно).")
+
+    st.subheader("🖼️ Генератор изображений")
+    image_backend = st.radio(
+        "Движок",
+        options=["Pollinations (бесплатно, без ключа)", "Gemini (нужен биллинг)"],
         index=0,
-        help="Выберите модель. Для экономии квоты используйте flash-модели."
+        help="Pollinations работает без API-ключа и бесплатно. Gemini требует включённого биллинга Google Cloud."
     )
-    
-    # Отображение счётчика
-    st.markdown("---")
-    st.metric("📊 Использовано генераций в этой сессии", st.session_state.generation_count)
-    if st.session_state.last_quota_error:
-        st.warning(f"⏳ Квота исчерпана. Повторите попытку через {st.session_state.last_quota_error} секунд.")
-    
-    # Кнопка для сброса счётчика (опционально)
-    if st.button("🔄 Сбросить счётчик"):
-        st.session_state.generation_count = 0
-        st.session_state.last_quota_error = None
-        st.experimental_rerun()
-    
-    st.markdown("---")
-    if st.button("📋 Показать все доступные модели (с generateContent)"):
-        if not api_key:
-            st.error("Сначала введите API-ключ.")
-        else:
-            try:
-                genai.configure(api_key=api_key)
-                models = genai.list_models()
-                st.subheader("Все модели (поддерживающие generateContent):")
-                for m in models:
-                    if 'generateContent' in m.supported_generation_methods:
-                        st.write(f"- {m.name}")
-            except Exception as e:
-                st.error(f"Ошибка: {e}")
 
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    uploaded_file = st.file_uploader("📤 Загрузите фото вещи (референс)", type=["jpg", "jpeg", "png"])
-    if uploaded_file:
-        try:
-            ref_image = Image.open(uploaded_file)
-            st.image(ref_image, caption="Референс", use_container_width=True)
-        except:
-            ref_image = None
-            st.error("Не удалось загрузить изображение")
+    if image_backend.startswith("Gemini"):
+        img_model_name = st.selectbox(
+            "Модель Gemini для изображений",
+            options=[
+                "models/gemini-2.5-flash-image",
+                "models/gemini-3.1-flash-image",
+                "models/gemini-3-pro-image",
+            ],
+            index=0
+        )
     else:
-        ref_image = None
+        img_model_name = None
+        st.caption("Pollinations не требует ключа и работает без ограничений.")
 
-with col2:
-    material = st.selectbox("Материал", ["leather", "wool", "cotton", "silk", "polyester", "denim"], index=0)
-    item_type = st.selectbox("Тип вещи", ["blazer", "jacket", "coat", "dress", "skirt", "trousers", "shirt"], index=0)
-    mannequin_part = st.selectbox("Часть манекена", ["torso", "full body"], index=0)
-    use_reference = st.checkbox("Использовать референсное фото", value=True, help="Если снять галочку, генерация будет только по текстовому промпту.")
+    st.markdown("---")
+    st.subheader("📝 Модель для описания")
+    text_model = st.selectbox(
+        "Gemini для текста",
+        options=["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-pro"],
+        index=0
+    )
 
-    if st.button("🚀 Сгенерировать изображение", use_container_width=True):
-        if not api_key:
-            st.error("❌ Введите API-ключ в боковой панели.")
-        elif ref_image is None and use_reference:
-            st.error("❌ Загрузите изображение или отключите использование референса.")
-        else:
-            # Базовый промпт (упрощённый)
-            prompt = (
-                f"Generate a high-resolution studio photo of a {material} {item_type} "
-                f"on a headless/armless mannequin {mannequin_part}, "
-                f"turned three-quarters to the left, soft lighting, plain dark background."
+# ---------- Утилиты ----------
+def generate_image_pollinations(prompt: str, width=768, height=1024) -> Image.Image | None:
+    """Генерация изображения через бесплатный Pollinations.ai"""
+    try:
+        encoded = urllib.parse.quote(prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded}?width={width}&height={height}&nologo=true&model=flux"
+        resp = requests.get(url, timeout=60)
+        resp.raise_for_status()
+        return Image.open(io.BytesIO(resp.content))
+    except Exception as e:
+        st.error(f"Ошибка Pollinations: {e}")
+        return None
+
+def generate_image_gemini(prompt, ref_image, model_name, api_key):
+    """Генерация изображения через Gemini (нужен биллинг)."""
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(model_name)
+        content = [prompt, ref_image] if ref_image else prompt
+        try:
+            response = model.generate_content(
+                content,
+                generation_config=genai.types.GenerateContentConfig(response_modalities=["IMAGE"])
             )
-            if not use_reference:
-                prompt = (
-                    f"Generate a high-resolution studio photo of a {material} {item_type} "
-                    f"on a mannequin {mannequin_part}, dark background, soft studio lighting, photorealistic."
-                )
+        except (AttributeError, TypeError):
+            response = model.generate_content(
+                content,
+                generation_config={"response_modalities": ["IMAGE"]}
+            )
+        for part in response.parts:
+            if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                return Image.open(io.BytesIO(part.inline_data.data))
+        st.warning("Gemini не вернул изображение. Возможно, квота исчерпана или контент заблокирован.")
+        return None
+    except Exception as e:
+        err = str(e)
+        if "429" in err or "Quota exceeded" in err:
+            st.error("❌ Превышена квота Gemini (429). Включите биллинг или используйте Pollinations.")
+        else:
+            st.error(f"Ошибка Gemini: {e}")
+        return None
 
-            st.info("⏳ Генерация... Пожалуйста, подождите.")
+def generate_description(prompt, screenshot, model_name, api_key):
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content([prompt, screenshot])
+        return response.text
+    except Exception as e:
+        st.error(f"Ошибка генерации описания: {e}")
+        return None
+
+# ---------- Вкладки ----------
+tab1, tab2 = st.tabs(["🖼️ Генерация изображений", "📝 Генерация описания"])
+
+# ============ ВКЛАДКА 1 ============
+with tab1:
+    st.header("Генерация изображений")
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        uploaded_file = st.file_uploader("📤 Загрузите фото вещи (референс)", type=["jpg", "jpeg", "png"])
+        ref_image = None
+        if uploaded_file:
             try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(img_model_name)
-
-                content = [prompt, ref_image] if (use_reference and ref_image is not None) else prompt
-
-                # Пробуем разные способы передачи response_modalities
-                try:
-                    response = model.generate_content(
-                        content,
-                        generation_config=genai.types.GenerateContentConfig(
-                            response_modalities=['IMAGE']
-                        )
-                    )
-                except (AttributeError, TypeError):
-                    response = model.generate_content(
-                        content,
-                        generation_config={"response_modalities": ["IMAGE"]}
-                    )
-
-                # Отладка
-                st.subheader("📦 Ответ API (часть):")
-                resp_str = str(response)
-                st.code(resp_str[:1500] + ("..." if len(resp_str)>1500 else ""), language="text")
-
-                # Проверка на finish_reason
-                blocked = False
-                if hasattr(response, 'candidates') and response.candidates:
-                    for cand in response.candidates:
-                        if cand.finish_reason == 16:
-                            blocked = True
-                            st.warning("⚠️ Запрос заблокирован системой безопасности. Попробуйте упростить промпт или отключить референс.")
-
-                if not blocked:
-                    generated_image = None
-                    for part in response.parts:
-                        if part.inline_data is not None and part.inline_data.mime_type.startswith("image/"):
-                            generated_image = Image.open(io.BytesIO(part.inline_data.data))
-                            break
-
-                    if generated_image:
-                        st.success("✅ Изображение сгенерировано!")
-                        st.image(generated_image, use_container_width=True)
-                        buf = io.BytesIO()
-                        generated_image.save(buf, format="PNG")
-                        st.download_button(
-                            label="📥 Скачать",
-                            data=buf.getvalue(),
-                            file_name="generated.png",
-                            mime="image/png"
-                        )
-                        # Увеличиваем счётчик
-                        st.session_state.generation_count += 1
-                        st.session_state.last_quota_error = None
-                    else:
-                        st.error("❌ В ответе API не найдено изображение.")
-                        if hasattr(response, 'text') and response.text:
-                            st.warning(f"Текст ответа:\n{response.text}")
-                        if "404" in resp_str or "not found" in resp_str:
-                            st.info("💡 Модель не найдена. Попробуйте выбрать другую из списка.")
-
+                ref_image = Image.open(uploaded_file)
+                st.image(ref_image, caption="Референс", use_container_width=True)
             except Exception as e:
-                error_msg = str(e)
-                st.error(f"❌ Ошибка при вызове API: {e}")
-                st.code(error_msg, language="text")
-                
-                # Обработка ошибки 429 (Quota exceeded)
-                if "429" in error_msg or "quota" in error_msg.lower():
-                    # Пытаемся извлечь retry_delay
-                    delay_match = re.search(r"retry_delay\s*{\s*seconds:\s*(\d+)", error_msg)
-                    if delay_match:
-                        delay_seconds = int(delay_match.group(1))
-                        st.session_state.last_quota_error = delay_seconds
-                        st.warning(f"⏳ Квота исчерпана. Повторите попытку через {delay_seconds} секунд.")
-                        # Рекомендуем переключиться на более дешёвую модель
-                        st.info("💡 Попробуйте выбрать более дешёвую модель (например, gemini-3.1-flash-image) и повторить запрос.")
-                    else:
-                        st.session_state.last_quota_error = 60  # примерное время
-                        st.warning("⏳ Квота исчерпана. Подождите минуту и попробуйте снова.")
+                st.error(f"Ошибка загрузки: {e}")
+
+    with col2:
+        material = st.selectbox("Материал", ["leather", "wool", "cotton", "silk", "polyester", "denim"], index=0)
+        item_type = st.selectbox("Тип вещи", ["blazer", "jacket", "coat", "dress", "skirt", "trousers", "shirt"], index=0)
+        mannequin_part = st.selectbox("Часть манекена", ["torso", "full body"], index=0)
+
+        if st.button("🚀 Сгенерировать фото", use_container_width=True):
+            prompt_mannequin = (
+                f"Studio photo of a {material} {item_type} on a headless mannequin {mannequin_part}, "
+                f"plain dark background, soft studio lighting, photorealistic, high detail"
+            )
+            prompt_model = (
+                f"Fashion e-commerce photo, mid-shot of a model wearing a {material} {item_type} "
+                f"and black high-waist wide-leg trousers, faceless framing, clean light grey background, "
+                f"soft diffused light, minimalist, photorealistic"
+            )
+
+            if image_backend.startswith("Pollinations"):
+                with st.spinner("Генерация через Pollinations..."):
+                    img1 = generate_image_pollinations(prompt_mannequin, 768, 1024)
+                    img2 = generate_image_pollinations(prompt_model, 768, 1024)
+            else:
+                if not api_key:
+                    st.error("Введите API-ключ или переключитесь на Pollinations.")
+                    img1 = img2 = None
                 else:
-                    # Другие ошибки
-                    st.session_state.last_quota_error = None
+                    with st.spinner("Генерация через Gemini..."):
+                        img1 = generate_image_gemini(prompt_mannequin, ref_image, img_model_name, api_key)
+                        img2 = generate_image_gemini(prompt_model, ref_image, img_model_name, api_key)
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("🧍 Манекен")
+                if img1:
+                    st.image(img1, use_container_width=True)
+                    buf = io.BytesIO(); img1.save(buf, "PNG")
+                    st.download_button("📥 Скачать", buf.getvalue(), "mannequin.png", "image/png")
+                else:
+                    st.info("Не удалось сгенерировать.")
+            with c2:
+                st.subheader("👩 Модель")
+                if img2:
+                    st.image(img2, use_container_width=True)
+                    buf = io.BytesIO(); img2.save(buf, "PNG")
+                    st.download_button("📥 Скачать", buf.getvalue(), "model.png", "image/png")
+                else:
+                    st.info("Не удалось сгенерировать.")
+
+# ============ ВКЛАДКА 2 ============
+with tab2:
+    st.header("Генерация описания")
+
+    uploaded_screenshot = st.file_uploader("📸 Загрузите скриншот с данными о вещи", type=["jpg", "jpeg", "png"])
+    screenshot = None
+    if uploaded_screenshot:
+        try:
+            screenshot = Image.open(uploaded_screenshot)
+            st.image(screenshot, caption="Скриншот", use_container_width=True)
+        except Exception as e:
+            st.error(f"Ошибка загрузки: {e}")
+
+    description_prompt = (
+        "Проанализируй данный скриншот с информацией о вещи. "
+        "Извлеки все ключевые данные (бренд, состав, замеры, состояние, особенности) "
+        "и составь привлекательное, структурированное и продающее описание товара "
+        "для онлайн-магазина одежды в Instagram/на сайте. "
+        "Используй эмодзи, списки и четкие блоки (Описание, Состав, Замеры, Стиль)."
+    )
+
+    if st.button("✨ Сгенерировать описание", use_container_width=True):
+        if not api_key:
+            st.error("❌ Введите Gemini API-ключ.")
+        elif not screenshot:
+            st.error("❌ Загрузите скриншот.")
+        else:
+            with st.spinner("Генерируем описание..."):
+                desc = generate_description(description_prompt, screenshot, text_model, api_key)
+                if desc:
+                    st.session_state["description_text"] = desc
+
+    if st.session_state.get("description_text"):
+        st.markdown("### 📝 Готовое описание")
+        st.code(st.session_state["description_text"], language="markdown", wrap_lines=True)
+        st.download_button(
+            "📥 Скачать описание (TXT)",
+            st.session_state["description_text"],
+            "description.txt",
+            "text/plain"
+        )
