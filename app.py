@@ -5,8 +5,8 @@ import html as html_lib
 
 # ==================== CONFIG ====================
 st.set_page_config(
-    page_title="my prompties",           # ← название вкладки
-    page_icon="🌿",
+    page_title="my prompties",
+    page_icon="◼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -16,159 +16,237 @@ MODEL_NAME = "gemini-3.7-flash"
 # ==================== STYLES ====================
 st.markdown("""
 <style>
-    /* ---------- Background ---------- */
+    /* ========== RESET & BASE ========== */
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
     .stApp {
-        background:
-            radial-gradient(circle at 12% 18%, rgba(80, 120, 65, 0.55), transparent 50%),
-            radial-gradient(circle at 88% 20%, rgba(55, 90, 45, 0.55), transparent 55%),
-            radial-gradient(circle at 75% 85%, rgba(40, 70, 35, 0.65), transparent 55%),
-            radial-gradient(circle at 20% 90%, rgba(90, 140, 70, 0.35), transparent 50%),
-            linear-gradient(135deg, #0b130a 0%, #14200f 55%, #091108 100%);
+        background: #000000;
+        background-image:
+            radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 255, 255, 0.06), transparent),
+            radial-gradient(ellipse 60% 40% at 80% 100%, rgba(255, 255, 255, 0.03), transparent);
         background-attachment: fixed;
-        color: #eef2e6;
+        color: #ededed;
     }
+
+    /* Subtle noise overlay for texture */
+    .stApp::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        z-index: 0;
+    }
+
     section[data-testid="stSidebar"] {
-        background: rgba(210, 230, 195, 0.07) !important;
-        backdrop-filter: blur(24px) saturate(140%);
-        -webkit-backdrop-filter: blur(24px) saturate(140%);
-        border-right: 1px solid rgba(255, 255, 255, 0.10);
+        background: #050505 !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
     }
-    h1, h2, h3, h4, h5, p, span, label, div { color: #eef2e6 !important; }
+
+    h1, h2, h3, h4, h5, h6, p, span, label, div { color: #ededed !important; }
 
     .block-container {
-        padding-top: 1.2rem !important;
-        padding-bottom: 1.2rem !important;
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
         max-width: 1400px;
     }
 
-    /* ---------- Glass panel: style Streamlit's bordered container ---------- */
+    /* ========== GLASS PANEL (bordered container) ========== */
     [data-testid="stVerticalBlockBorderWrapper"] {
-        background: rgba(215, 230, 200, 0.10) !important;
-        backdrop-filter: blur(28px) saturate(160%);
-        -webkit-backdrop-filter: blur(28px) saturate(160%);
-        border-radius: 18px !important;
-        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        background: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.008) 100%) !important;
+        backdrop-filter: blur(20px) saturate(120%);
+        -webkit-backdrop-filter: blur(20px) saturate(120%);
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         box-shadow:
-            0 12px 40px rgba(0, 0, 0, 0.35),
-            inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
-        padding: 18px 20px !important;
+            0 1px 0 rgba(255, 255, 255, 0.04) inset,
+            0 20px 60px rgba(0, 0, 0, 0.6) !important;
+        padding: 20px 22px !important;
+        position: relative;
+        overflow: hidden;
     }
 
-    /* ---------- Section label ---------- */
+    /* Thin accent line at top of panels */
+    [data-testid="stVerticalBlockBorderWrapper"]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20%;
+        right: 20%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+        pointer-events: none;
+    }
+
+    /* ========== SECTION LABEL ========== */
     .section-label {
-        font-size: 0.72rem;
+        font-family: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+        font-size: 0.68rem;
         text-transform: uppercase;
-        letter-spacing: 2.2px;
+        letter-spacing: 3px;
         font-weight: 500;
-        opacity: 0.65;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        color: rgba(255, 255, 255, 0.45) !important;
+        padding-bottom: 14px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-label::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        background: #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
     }
 
-    /* ---------- Buttons ---------- */
+    /* ========== BUTTONS ========== */
     .stButton > button {
         width: 100%;
-        background: rgba(255, 255, 255, 0.10);
-        color: #eef2e6;
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        border-radius: 10px;
-        padding: 9px 20px;
-        font-weight: 500;
+        background: #ffffff;
+        color: #000000 !important;
+        border: 1px solid #ffffff;
+        border-radius: 12px;
+        padding: 11px 22px;
+        font-weight: 600;
         font-size: 0.86rem;
-        letter-spacing: 0.5px;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(10px);
+        letter-spacing: 0.3px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
     }
     .stButton > button:hover {
-        background: rgba(255, 255, 255, 0.20);
-        border-color: rgba(255, 255, 255, 0.50);
+        background: #ffffff;
+        border-color: #ffffff;
         transform: translateY(-1px);
+        box-shadow: 0 0 24px rgba(255, 255, 255, 0.25);
     }
+    .stButton > button:active { transform: translateY(0); }
+    .stButton > button p, .stButton > button span { color: #000000 !important; }
 
-    /* ---------- Inputs ---------- */
+    /* ========== INPUTS ========== */
     .stTextInput input {
-        background: rgba(255, 255, 255, 0.07) !important;
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.10) !important;
         border-radius: 10px !important;
-        color: #eef2e6 !important;
+        color: #ededed !important;
+        font-size: 0.88rem;
+        padding: 10px 14px !important;
+        transition: all 0.2s ease;
     }
-    .stTextInput input::placeholder { color: rgba(238, 242, 230, 0.45) !important; }
+    .stTextInput input:focus {
+        border-color: rgba(255, 255, 255, 0.35) !important;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05) !important;
+    }
+    .stTextInput input::placeholder { color: rgba(237, 237, 237, 0.3) !important; }
 
-    /* ---------- Selectboxes ---------- */
+    /* ========== SELECTBOXES ========== */
     .stSelectbox label {
-        font-size: 0.66rem !important;
+        font-family: 'JetBrains Mono', 'SF Mono', monospace !important;
+        font-size: 0.62rem !important;
         text-transform: uppercase;
-        letter-spacing: 1.3px;
-        opacity: 0.6;
-        margin-bottom: 2px !important;
+        letter-spacing: 1.6px;
+        color: rgba(255, 255, 255, 0.4) !important;
+        margin-bottom: 4px !important;
     }
     .stSelectbox div[data-baseweb="select"] > div {
-        background: rgba(255, 255, 255, 0.07) !important;
-        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.10) !important;
         border-radius: 10px !important;
-        color: #eef2e6 !important;
-        min-height: 34px !important;
+        color: #ededed !important;
+        min-height: 38px !important;
         font-size: 0.86rem;
+        transition: all 0.2s ease;
+    }
+    .stSelectbox div[data-baseweb="select"] > div:hover {
+        border-color: rgba(255, 255, 255, 0.22) !important;
+        background: rgba(255, 255, 255, 0.05) !important;
     }
     div[data-baseweb="popover"] div[role="listbox"] {
-        background: rgba(30, 45, 25, 0.96) !important;
-        backdrop-filter: blur(18px);
+        background: #0a0a0a !important;
         border-radius: 10px !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9) !important;
+    }
+    div[data-baseweb="popover"] li {
+        font-size: 0.86rem !important;
+    }
+    div[data-baseweb="popover"] li:hover {
+        background: rgba(255, 255, 255, 0.06) !important;
     }
 
-    /* ---------- File uploader ---------- */
+    /* ========== FILE UPLOADER ========== */
     section[data-testid="stFileUploaderDropzone"] {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1.5px dashed rgba(255, 255, 255, 0.26) !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
         border-radius: 12px !important;
-        backdrop-filter: blur(12px);
-        padding: 10px 14px !important;
+        padding: 14px !important;
         min-height: auto !important;
+        transition: all 0.2s ease;
     }
-    section[data-testid="stFileUploaderDropzone"] svg { fill: #c8d6b8 !important; }
+    section[data-testid="stFileUploaderDropzone"]:hover {
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] svg { fill: rgba(255,255,255,0.5) !important; }
     section[data-testid="stFileUploaderDropzone"] button {
-        background: rgba(255, 255, 255, 0.10) !important;
-        border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 8px !important;
-        color: #eef2e6 !important;
-        padding: 4px 12px !important;
+        color: #ededed !important;
+        padding: 5px 14px !important;
+        font-size: 0.8rem !important;
+        transition: all 0.2s ease;
+    }
+    section[data-testid="stFileUploaderDropzone"] button:hover {
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
     }
 
-    /* ---------- Hide Streamlit chrome ---------- */
+    /* ========== HIDE STREAMLIT CHROME ========== */
     header[data-testid="stHeader"] { background: transparent; }
     #MainMenu, footer { visibility: hidden; }
 
-    /* ---------- Copyable blocks ---------- */
+    /* ========== COPYABLE BLOCKS ========== */
     .copyable,
     .result-wrap {
-        background: rgba(215, 230, 200, 0.06);
-        backdrop-filter: blur(20px) saturate(160%);
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        padding: 12px 14px;
-        margin-top: 10px;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        padding: 14px 16px;
+        margin-top: 12px;
+        font-family: 'Inter', -apple-system, sans-serif;
         font-size: 0.88rem;
-        line-height: 1.55;
+        line-height: 1.6;
         white-space: pre-wrap;
         word-break: break-word;
-        color: #f0f5e8;
+        color: #d8d8d8;
         overflow: hidden;
+        transition: border-color 0.2s ease;
+    }
+    .copyable:hover,
+    .result-wrap:hover {
+        border-color: rgba(255, 255, 255, 0.16);
     }
     .copyable .hl {
-        color: #b8e08c;
+        color: #ffffff;
         font-weight: 600;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.84rem;
     }
 
-    /* Copy icon floats right → text wraps around it */
+    /* ========== COPY ICON ========== */
     .copy-icon {
         float: right;
         margin: 0 0 4px 10px;
-        background: rgba(255, 255, 255, 0.10);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        color: #e8eed8;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.7);
         border-radius: 7px;
         width: 26px;
         height: 26px;
@@ -181,8 +259,35 @@ st.markdown("""
         padding: 0;
         transition: all 0.15s ease;
     }
-    .copy-icon:hover { background: rgba(255, 255, 255, 0.22); }
+    .copy-icon:hover {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #ffffff;
+    }
     .copy-icon:active { transform: scale(0.92); }
+
+    /* ========== SIDEBAR CAPTION ========== */
+    section[data-testid="stSidebar"] .stCaption,
+    section[data-testid="stSidebar"] small {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 0.7rem !important;
+        color: rgba(255, 255, 255, 0.35) !important;
+        letter-spacing: 0.5px;
+    }
+
+    /* ========== SPINNER ========== */
+    .stSpinner > div {
+        border-color: rgba(255, 255, 255, 0.15) !important;
+        border-top-color: #ffffff !important;
+    }
+
+    /* ========== ALERTS ========== */
+    .stAlert {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 10px !important;
+        color: #ededed !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -198,7 +303,7 @@ with st.sidebar:
         key="gemini_api_key",
         help="Saved for the current session."
     )
-    st.caption(f"Model: `{MODEL_NAME}`")
+    st.caption(f"model // {MODEL_NAME}")
 
 # ==================== HELPERS ====================
 COPY_JS = """
@@ -216,7 +321,6 @@ function copyBlock(id, btn) {
 """
 
 def render_copyable(html_content: str, block_id: str) -> str:
-    # ВАЖНО: без переносов и отступов — иначе white-space: pre-wrap их отобразит
     return (
         f'<div class="copyable" id="{block_id}">'
         f'<button class="copy-icon" title="Copy" '
@@ -277,7 +381,7 @@ left, right = st.columns([1, 1], gap="large")
 
 # ------------------ LEFT: DESCRIPTION ------------------
 with left:
-    with st.container(border=True):          # ← нативный стеклянный контейнер
+    with st.container(border=True):
         st.markdown(
             '<div class="section-label">Generate Description</div>',
             unsafe_allow_html=True
@@ -297,7 +401,7 @@ with left:
             except Exception as e:
                 st.error(f"Cannot open image: {e}")
 
-        if st.button("✨ Generate Description", use_container_width=True, key="gen_btn"):
+        if st.button("Generate Description", use_container_width=True, key="gen_btn"):
             if not st.session_state["gemini_api_key"]:
                 st.error("Please enter your Gemini API key in the sidebar.")
             elif screenshot is None:
@@ -314,7 +418,6 @@ with left:
 
         if st.session_state.get("description_text"):
             safe = html_lib.escape(st.session_state["description_text"])
-            # тоже без переносов в шаблоне
             result_html = (
                 f'<div class="result-wrap" id="result-block">'
                 f'<button class="copy-icon" title="Copy" '
@@ -330,7 +433,7 @@ with right:
     # ============ PROMPT 1 ============
     with st.container(border=True):
         st.markdown(
-            '<div class="section-label">Prompt — Mannequin</div>',
+            '<div class="section-label">Prompt / Mannequin</div>',
             unsafe_allow_html=True
         )
 
@@ -353,12 +456,12 @@ with right:
         )
         st.markdown(render_copyable(p1_html, "prompt1"), unsafe_allow_html=True)
 
-    st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
     # ============ PROMPT 2 ============
     with st.container(border=True):
         st.markdown(
-            '<div class="section-label">Prompt — Model</div>',
+            '<div class="section-label">Prompt / Model</div>',
             unsafe_allow_html=True
         )
 
