@@ -5,149 +5,257 @@ import html as html_lib
 
 # ==================== CONFIG ====================
 st.set_page_config(
-    page_title="AI Fashion Description",
-    page_icon="✨",
-    layout="centered",
+    page_title="Fashion Studio",
+    page_icon="🌿",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
 MODEL_NAME = "gemini-3.7-flash"
 
-# ==================== GLASSMORPHISM STYLES ====================
+# ==================== STYLES ====================
 st.markdown("""
 <style>
+    /* ---------- Background ---------- */
     .stApp {
         background:
-            radial-gradient(circle at 12% 18%, rgba(255, 154, 158, 0.40), transparent 45%),
-            radial-gradient(circle at 88% 12%, rgba(161, 196, 253, 0.40), transparent 45%),
-            radial-gradient(circle at 50% 90%, rgba(186, 156, 255, 0.35), transparent 45%),
-            linear-gradient(135deg, #17172a 0%, #23233d 55%, #1b1b2e 100%);
+            radial-gradient(circle at 12% 18%, rgba(80, 120, 65, 0.55), transparent 50%),
+            radial-gradient(circle at 88% 20%, rgba(55, 90, 45, 0.55), transparent 55%),
+            radial-gradient(circle at 75% 85%, rgba(40, 70, 35, 0.65), transparent 55%),
+            radial-gradient(circle at 20% 90%, rgba(90, 140, 70, 0.35), transparent 50%),
+            linear-gradient(135deg, #0b130a 0%, #14200f 55%, #091108 100%);
         background-attachment: fixed;
-        color: #f4f4fa;
+        color: #eef2e6;
     }
     section[data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.06) !important;
-        backdrop-filter: blur(18px) saturate(160%);
-        -webkit-backdrop-filter: blur(18px) saturate(160%);
-        border-right: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(210, 230, 195, 0.07) !important;
+        backdrop-filter: blur(24px) saturate(140%);
+        -webkit-backdrop-filter: blur(24px) saturate(140%);
+        border-right: 1px solid rgba(255, 255, 255, 0.10);
     }
-    h1, h2, h3, h4, p, span, label, div { color: #f4f4fa !important; }
+    h1, h2, h3, h4, h5, p, span, label, div { color: #eef2e6 !important; }
 
-    /* Compact page padding */
-    .block-container { padding-top: 2rem !important; padding-bottom: 1.5rem !important; max-width: 900px; }
+    .block-container {
+        padding-top: 1.6rem !important;
+        padding-bottom: 1.5rem !important;
+        max-width: 1400px;
+    }
 
-    /* Glass panel */
+    /* ---------- Glass panel ---------- */
     .glass {
-        background: rgba(255, 255, 255, 0.07);
-        backdrop-filter: blur(18px) saturate(160%);
-        -webkit-backdrop-filter: blur(18px) saturate(160%);
-        border-radius: 16px;
+        background: rgba(215, 230, 200, 0.10);
+        backdrop-filter: blur(28px) saturate(160%);
+        -webkit-backdrop-filter: blur(28px) saturate(160%);
+        border-radius: 20px;
         border: 1px solid rgba(255, 255, 255, 0.16);
-        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-        padding: 16px 18px;
+        box-shadow:
+            0 12px 40px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.16);
+        padding: 20px 22px;
     }
 
-    /* Buttons */
+    /* ---------- Section heading ---------- */
+    .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 10px;
+        margin-bottom: 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+    }
+    .section-heading .hamburger {
+        font-size: 15px;
+        letter-spacing: -2px;
+        opacity: 0.9;
+    }
+    .section-heading .heading-text {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 2.4px;
+        font-weight: 500;
+        opacity: 0.95;
+    }
+
+    /* ---------- Buttons ---------- */
     .stButton > button {
         width: 100%;
-        background: rgba(255, 255, 255, 0.12);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        border-radius: 12px;
-        padding: 10px 18px;
-        font-weight: 600;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.10);
+        color: #eef2e6;
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        border-radius: 999px;
+        padding: 10px 22px;
+        font-weight: 500;
+        font-size: 0.86rem;
+        letter-spacing: 0.5px;
         transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
     }
     .stButton > button:hover {
         background: rgba(255, 255, 255, 0.22);
+        border-color: rgba(255, 255, 255, 0.55);
         transform: translateY(-1px);
-        border-color: rgba(255, 255, 255, 0.45);
     }
 
-    /* Inputs */
+    /* ---------- Inputs ---------- */
     .stTextInput input {
-        background: rgba(255, 255, 255, 0.08) !important;
-        border: 1px solid rgba(255, 255, 255, 0.20) !important;
+        background: rgba(255, 255, 255, 0.07) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
         border-radius: 10px !important;
-        color: #ffffff !important;
+        color: #eef2e6 !important;
+    }
+    .stTextInput input::placeholder { color: rgba(238, 242, 230, 0.45) !important; }
+
+    /* ---------- Selectboxes (compact) ---------- */
+    .stSelectbox label {
+        font-size: 0.68rem !important;
+        text-transform: uppercase;
+        letter-spacing: 1.4px;
+        opacity: 0.7;
+        margin-bottom: 2px !important;
+    }
+    .stSelectbox div[data-baseweb="select"] > div {
+        background: rgba(255, 255, 255, 0.07) !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        border-radius: 10px !important;
+        color: #eef2e6 !important;
+        min-height: 36px !important;
+        font-size: 0.86rem;
+    }
+    div[data-baseweb="popover"] div[role="listbox"] {
+        background: rgba(30, 45, 25, 0.95) !important;
+        backdrop-filter: blur(18px);
+        border-radius: 10px !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
 
-    /* File uploader */
+    /* ---------- File uploader ---------- */
     section[data-testid="stFileUploaderDropzone"] {
         background: rgba(255, 255, 255, 0.05) !important;
-        border: 1.5px dashed rgba(255, 255, 255, 0.28) !important;
+        border: 1.5px dashed rgba(255, 255, 255, 0.26) !important;
         border-radius: 14px !important;
         backdrop-filter: blur(12px);
-        padding: 14px !important;
+        padding: 12px !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] svg { fill: #c8d6b8 !important; }
+    section[data-testid="stFileUploaderDropzone"] button {
+        background: rgba(255, 255, 255, 0.10) !important;
+        border: 1px solid rgba(255, 255, 255, 0.30) !important;
+        border-radius: 999px !important;
+        color: #eef2e6 !important;
     }
 
-    /* Hide Streamlit chrome */
+    /* ---------- Hide Streamlit chrome ---------- */
     header[data-testid="stHeader"] { background: transparent; }
     #MainMenu, footer { visibility: hidden; }
 
-    /* ---- Result block with copy icon ---- */
-    .result-wrap {
+    /* ---------- Result / prompt blocks with copy icon ---------- */
+    .copyable {
         position: relative;
-        background: rgba(255, 255, 255, 0.07);
-        backdrop-filter: blur(22px) saturate(160%);
-        -webkit-backdrop-filter: blur(22px) saturate(160%);
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.20);
-        box-shadow: 0 10px 34px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.20);
-        padding: 20px 22px;
+        background: rgba(215, 230, 200, 0.06);
+        backdrop-filter: blur(20px) saturate(160%);
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        padding: 16px 40px 16px 18px;
         margin-top: 10px;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        font-size: 0.94rem;
+        font-size: 0.88rem;
         line-height: 1.55;
-        color: #f5f5fa;
         white-space: pre-wrap;
         word-break: break-word;
+        color: #f0f5e8;
+    }
+    .copyable .hl {
+        color: #b8e08c;
+        font-weight: 600;
     }
     .copy-icon {
         position: absolute;
-        top: 10px;
-        right: 10px;
+        top: 8px;
+        right: 8px;
         background: rgba(255, 255, 255, 0.10);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        color: #f0f0fa;
-        border-radius: 8px;
-        width: 30px;
-        height: 30px;
+        border: 1px solid rgba(255, 255, 255, 0.20);
+        color: #e8eed8;
+        border-radius: 7px;
+        width: 26px;
+        height: 26px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 12px;
+        line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 0;
-        transition: all 0.18s ease;
+        transition: all 0.15s ease;
     }
-    .copy-icon:hover {
-        background: rgba(255, 255, 255, 0.22);
-        transform: scale(1.06);
+    .copy-icon:hover { background: rgba(255, 255, 255, 0.22); }
+    .copy-icon:active { transform: scale(0.92); }
+
+    /* ---------- Description result variant ---------- */
+    .result-wrap {
+        position: relative;
+        background: rgba(215, 230, 200, 0.08);
+        backdrop-filter: blur(22px) saturate(160%);
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        padding: 16px 40px 16px 18px;
+        margin-top: 12px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.88rem;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #f0f5e8;
     }
-    .copy-icon:active { transform: scale(0.95); }
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
-# Persist API key in session across reruns
 if "gemini_api_key" not in st.session_state:
     st.session_state["gemini_api_key"] = ""
 
 with st.sidebar:
-    st.markdown("### ✨ AI Fashion Studio")
+    st.markdown("#### 🌿 Settings")
     st.text_input(
         "Gemini API Key",
         type="password",
-        placeholder="Paste your key...",
+        placeholder="Paste your key…",
         key="gemini_api_key",
         help="Saved for the current session."
     )
-    st.caption("Model: `gemini-3.7-flash`")
+    st.caption(f"Model: `{MODEL_NAME}`")
 
-# ==================== PROMPT ====================
+# ==================== HELPERS ====================
+COPY_JS = """
+<script>
+function copyBlock(id, btn) {
+    const el = document.getElementById(id);
+    const text = el.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const old = btn.innerText;
+        btn.innerText = '✓';
+        setTimeout(() => btn.innerText = old, 1300);
+    });
+}
+</script>
+"""
+
+def render_copyable(html_content: str, block_id: str) -> str:
+    """Wrap HTML content in a glass block with a copy icon."""
+    return f'''
+    <div class="copyable" id="{block_id}">
+        <button class="copy-icon" title="Copy"
+            onclick="copyBlock('{block_id}', this)">⧉</button>
+        {html_content}
+    </div>
+    '''
+
+# ==================== PROMPTS ====================
+MATERIALS = ["wool", "silk", "suede", "leather"]
+ITEM_TYPES = ["blazer", "dress", "coat", "top", "skirt"]
+MANNEQUIN_PARTS = ["torso", "full body"]
+BOTTOM_COLORS = ["black", "white", "beige", "grey"]
+
+# ==================== DESCRIPTION PROMPT ====================
 DESCRIPTION_PROMPT = """You are a professional copywriter for a high-end vintage and designer fashion store.
 
 Analyze the screenshot with garment information and output a product card in EXACTLY the following format. Do NOT add any labels, headings, section titles, or markdown formatting. Do NOT add any introductory or explanatory sentences.
@@ -176,8 +284,7 @@ STRICT RULES:
 - Everything must be in English.
 """
 
-# ==================== GENERATION ====================
-def generate_description(prompt: str, screenshot: Image.Image, api_key: str) -> str | None:
+def generate_description(prompt: str, screenshot: Image.Image, api_key: str):
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(MODEL_NAME)
@@ -187,18 +294,28 @@ def generate_description(prompt: str, screenshot: Image.Image, api_key: str) -> 
         st.error(f"API error: {e}")
         return None
 
-# ==================== MAIN ====================
-st.markdown("#### 👗 AI Fashion Description Generator")
-st.caption("Upload a product screenshot → get a ready-to-publish description.")
+# ==================== LAYOUT ====================
+st.markdown(COPY_JS, unsafe_allow_html=True)
 
-col1, col2 = st.columns([1.15, 1], gap="medium")
+left, right = st.columns([1, 1], gap="large")
 
-with col1:
+# ------------------ LEFT: DESCRIPTION ------------------
+with left:
     st.markdown('<div class="glass">', unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="section-heading">'
+        '<span class="hamburger">≡</span>'
+        '<span class="heading-text">Generate Description</span>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
     uploaded = st.file_uploader(
         "Screenshot",
         type=["jpg", "jpeg", "png", "webp"],
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="desc_upload"
     )
     screenshot = None
     if uploaded:
@@ -207,17 +324,14 @@ with col1:
             st.image(screenshot, use_container_width=True)
         except Exception as e:
             st.error(f"Cannot open image: {e}")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-with col2:
-    st.markdown('<div class="glass">', unsafe_allow_html=True)
-    if st.button("✨ Generate Description", use_container_width=True):
+    if st.button("✨ Generate Description", use_container_width=True, key="gen_btn"):
         if not st.session_state["gemini_api_key"]:
             st.error("Please enter your Gemini API key in the sidebar.")
         elif screenshot is None:
             st.error("Please upload a screenshot first.")
         else:
-            with st.spinner("Generating..."):
+            with st.spinner("Generating…"):
                 desc = generate_description(
                     DESCRIPTION_PROMPT,
                     screenshot,
@@ -225,27 +339,84 @@ with col2:
                 )
                 if desc:
                     st.session_state["description_text"] = desc.strip()
+
+    if st.session_state.get("description_text"):
+        safe = html_lib.escape(st.session_state["description_text"])
+        st.markdown(
+            f'''
+            <div class="result-wrap" id="result-block">
+                <button class="copy-icon" title="Copy"
+                    onclick="copyBlock('result-block', this)">⧉</button>
+                <div>{safe}</div>
+            </div>
+            ''',
+            unsafe_allow_html=True
+        )
+
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ==================== RESULT ====================
-if st.session_state.get("description_text"):
-    text = st.session_state["description_text"]
-    # Escape for HTML, keep line breaks via white-space: pre-wrap
-    safe_text = html_lib.escape(text)
+# ------------------ RIGHT: PROMPTS ------------------
+with right:
 
+    # ============ PROMPT 1 ============
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
     st.markdown(
-        f'''
-        <div class="result-wrap" id="result-block">
-            <button class="copy-icon" title="Copy to clipboard"
-                onclick="
-                    const t = document.getElementById('result-text').innerText;
-                    navigator.clipboard.writeText(t).then(() => {{
-                        this.innerText = '✓';
-                        setTimeout(() => this.innerText = '⧉', 1400);
-                    }});
-                ">⧉</button>
-            <div id="result-text">{safe_text}</div>
-        </div>
-        ''',
+        '<div class="section-heading">'
+        '<span class="hamburger">≡</span>'
+        '<span class="heading-text">Prompt — Mannequin</span>'
+        '</div>',
         unsafe_allow_html=True
     )
+
+    p1c1, p1c2, p1c3 = st.columns(3)
+    with p1c1:
+        p1_material = st.selectbox("Material", MATERIALS, index=0, key="p1_mat")
+    with p1c2:
+        p1_item = st.selectbox("Item", ITEM_TYPES, index=0, key="p1_item")
+    with p1c3:
+        p1_part = st.selectbox("Mannequin", MANNEQUIN_PARTS, index=0, key="p1_part")
+
+    p1_html = (
+        f'Generate a high-resolution studio photo of this '
+        f'<span class="hl">{p1_material}</span> '
+        f'<span class="hl">{p1_item}</span>, '
+        f'preserving every detail, on a headless/armless feminine cream linen mannequin '
+        f'<span class="hl">{p1_part}</span>, '
+        f'turned three-quarters toward the left side of the frame with soft incoming light, '
+        f'against a plain dark background'
+    )
+    st.markdown(render_copyable(p1_html, "prompt1"), unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
+
+    # ============ PROMPT 2 ============
+    st.markdown('<div class="glass">', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-heading">'
+        '<span class="hamburger">≡</span>'
+        '<span class="heading-text">Prompt — Model</span>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    p2c1, p2c2, p2c3 = st.columns(3)
+    with p2c1:
+        p2_material = st.selectbox("Material", MATERIALS, index=0, key="p2_mat")
+    with p2c2:
+        p2_item = st.selectbox("Item", ITEM_TYPES, index=0, key="p2_item")
+    with p2c3:
+        p2_bottom = st.selectbox("Trousers", BOTTOM_COLORS, index=0, key="p2_bottom")
+
+    p2_html = (
+        f'Fashion e-commerce photography, mid-shot of a model, wearing this '
+        f'<span class="hl">{p2_material}</span> '
+        f'<span class="hl">{p2_item}</span> and '
+        f'<span class="hl">{p2_bottom}</span> high-waist wide-leg trousers. '
+        f'Faceless framing, cropped at the chin, casual pose. '
+        f'Clean light neutral grey studio background. Soft diffused lighting, minimalist aesthetic, '
+        f'effortless chic, high contrast, sharp clothing details, photorealistic '
+        f'--ar 3:4 --style raw'
+    )
+    st.markdown(render_copyable(p2_html, "prompt2"), unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
