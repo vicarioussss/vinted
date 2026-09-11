@@ -339,7 +339,8 @@ MATERIALS = ["wool", "silk", "suede", "leather", "-"]
 ITEM_TYPES = ["blazer", "dress", "coat", "top", "skirt"]
 MANNEQUIN_PARTS = ["torso", "-"]
 BOTTOM_COLORS = ["black", "white", "beige", "grey"]
-REFERENCE_OPTIONS = ["Ref 1", "-"]
+REFERENCE_SELECT_OPTIONS = ["Ref 1", "-"]
+REFERENCE_TEXT_MAP = {"Ref 1": "like [Reference 1]", "-": ""}
 
 DESCRIPTION_PROMPT = """You are a professional copywriter for a high-end vintage and designer fashion store.
 
@@ -372,113 +373,60 @@ STRICT RULES:
 
 def render_copyable(html_content: str, plain_text: str, block_id: str, min_height: int = 60):
     payload = json.dumps(plain_text)
-    inner = f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<style>
-    * {{ box-sizing: border-box; }}
-    html, body {{
-        margin: 0; padding: 0;
-        background: transparent;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        overflow: hidden;
-    }}
-    .wrap {{
-        position: relative;
-        border-left: 1px solid rgba(200, 200, 200, 0.20);
-        padding: 2px 40px 2px 16px;
-        font-size: 13.5px;
-        line-height: 1.65;
-        color: #b8b8b8;
-        white-space: pre-wrap;
-        word-break: break-word;
-        overflow-wrap: anywhere;
-    }}
-    .hl {{
-        color: #e8e8e8;
-        font-weight: 600;
-        background: rgba(255, 255, 255, 0.07);
-        padding: 1px 6px;
-        border-radius: 4px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12.5px;
-    }}
-    .copy-icon {{
-        position: absolute;
-        top: 0;
-        right: 0;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.11);
-        color: rgba(200, 200, 200, 0.75);
-        border-radius: 7px;
-        width: 26px;
-        height: 26px;
-        cursor: pointer;
-        font-size: 12px;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        transition: all 0.15s ease;
-        outline: none;
-    }}
-    .copy-icon:hover {{
-        background: rgba(255, 255, 255, 0.14);
-        border-color: rgba(255, 255, 255, 0.25);
-        color: #ffffff;
-    }}
-    .copy-icon:active {{ transform: scale(0.92); }}
-</style>
-</head>
-<body>
-    <div class="wrap">
-        {html_content}
-        <button class="copy-icon" id="btn-{block_id}" title="Copy">⧉</button>
-    </div>
-    <script>
-        (function() {{
-            var btn = document.getElementById('btn-{block_id}');
-            var txt = {payload};
-            btn.addEventListener('click', function() {{
-                var ok = false;
-                try {{
-                    var ta = document.createElement('textarea');
-                    ta.value = txt;
-                    ta.style.position = 'fixed';
-                    ta.style.top = '-1000px';
-                    ta.style.opacity = '0';
-                    document.body.appendChild(ta);
-                    ta.focus(); ta.select();
-                    ok = document.execCommand('copy');
-                    document.body.removeChild(ta);
-                }} catch (e) {{ ok = false; }}
-                if (!ok && navigator.clipboard && navigator.clipboard.writeText) {{
-                    navigator.clipboard.writeText(txt).catch(function(){{}});
-                }}
-                var old = btn.innerText;
-                btn.innerText = '✓';
-                setTimeout(function() {{ btn.innerText = old; }}, 1300);
-            }});
-            function sendHeight() {{
-                var h = document.documentElement.scrollHeight;
-                try {{
-                    window.parent.postMessage({{
-                        isStreamlitMessage: true,
-                        type: "streamlit:setFrameHeight",
-                        height: h + 4
-                    }}, "*");
-                }} catch (e) {{}}
-            }}
-            sendHeight();
-            setTimeout(sendHeight, 150);
-            setTimeout(sendHeight, 500);
-            window.addEventListener('load', sendHeight);
-        }})();
-    </script>
-</body>
-</html>"""
+    inner = (
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
+        '*{box-sizing:border-box;}'
+        'html,body{margin:0;padding:0;background:transparent;'
+        "font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
+        'overflow:hidden;}'
+        '.container{display:flex;align-items:flex-start;gap:12px;width:100%;}'
+        '.text-content{flex:1 1 auto;min-width:0;'
+        'border-left:1px solid rgba(200,200,200,0.20);'
+        'padding:0 0 0 16px;'
+        'font-size:13.5px;line-height:1.65;color:#b8b8b8;'
+        'white-space:pre-line;word-break:break-word;overflow-wrap:anywhere;}'
+        '.hl{color:#e8e8e8;font-weight:600;background:rgba(255,255,255,0.07);'
+        'padding:1px 6px;border-radius:4px;'
+        "font-family:'JetBrains Mono',monospace;font-size:12.5px;}"
+        '.copy-icon{flex:0 0 auto;background:rgba(255,255,255,0.05);'
+        'border:1px solid rgba(255,255,255,0.11);color:rgba(200,200,200,0.75);'
+        'border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:12px;'
+        'line-height:1;display:flex;align-items:center;justify-content:center;'
+        'padding:0;transition:all 0.15s ease;outline:none;}'
+        '.copy-icon:hover{background:rgba(255,255,255,0.14);'
+        'border-color:rgba(255,255,255,0.25);color:#fff;}'
+        '.copy-icon:active{transform:scale(0.92);}'
+        '</style></head><body>'
+        '<div class="container">'
+        f'<div class="text-content">{html_content}</div>'
+        f'<button class="copy-icon" id="btn-{block_id}" title="Copy">⧉</button>'
+        '</div>'
+        '<script>'
+        '(function(){'
+        f"var btn=document.getElementById('btn-{block_id}');"
+        f'var txt={payload};'
+        "btn.addEventListener('click',function(){"
+        'var ok=false;'
+        'try{var ta=document.createElement("textarea");'
+        'ta.value=txt;ta.style.position="fixed";ta.style.top="-1000px";'
+        'ta.style.opacity="0";document.body.appendChild(ta);'
+        'ta.focus();ta.select();ok=document.execCommand("copy");'
+        'document.body.removeChild(ta);}catch(e){ok=false;}'
+        'if(!ok&&navigator.clipboard&&navigator.clipboard.writeText){'
+        'navigator.clipboard.writeText(txt).catch(function(){});}'
+        'var old=btn.innerText;btn.innerText="✓";'
+        'setTimeout(function(){btn.innerText=old;},1300);});'
+        'function sendHeight(){'
+        'var h=document.documentElement.scrollHeight;'
+        'try{window.parent.postMessage({'
+        'isStreamlitMessage:true,'
+        'type:"streamlit:setFrameHeight",'
+        'height:h+4},"*");}catch(e){}}'
+        'sendHeight();setTimeout(sendHeight,150);setTimeout(sendHeight,500);'
+        "window.addEventListener('load',sendHeight);"
+        '})();'
+        '</script></body></html>'
+    )
     components.html(inner, height=min_height, scrolling=False)
 
 
@@ -581,17 +529,18 @@ with right:
         material2 = c1.selectbox("Material", MATERIALS, key="p2_mat")
         item2 = c2.selectbox("Item", ITEM_TYPES, key="p2_item")
         bottom = c3.selectbox("Trousers", BOTTOM_COLORS, key="p2_bottom")
-        ref_opt = c4.selectbox("Reference", REFERENCE_OPTIONS, key="p2_ref")
+        ref_select = c4.selectbox("Reference", REFERENCE_SELECT_OPTIONS, key="p2_ref")
 
         mat2_part = f"{material2} " if material2 != "-" else ""
         highlight2 = f"{mat2_part}{item2}"
 
-        if ref_opt == "-":
+        ref_text = REFERENCE_TEXT_MAP.get(ref_select, "")
+        if ref_text:
+            ref_html = f' <span class="hl">{ref_text}</span>'
+            ref_plain = f' {ref_text}'
+        else:
             ref_html = ""
             ref_plain = ""
-        else:
-            ref_html = f' <span class="hl">like {ref_opt}</span>'
-            ref_plain = f' like {ref_opt}'
 
         p2_html = (
             f'Fashion e-commerce photography{ref_html}, mid-shot of a model, wearing this '
