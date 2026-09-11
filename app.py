@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 import google.generativeai as genai
 from PIL import Image
 import html as html_lib
+import json
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
 
@@ -266,8 +267,7 @@ st.markdown("""
     header[data-testid="stHeader"] { background: transparent; }
     #MainMenu, footer { visibility: hidden; }
 
-    .copyable,
-    .result-wrap {
+    .copyable {
         background: transparent;
         border: none;
         border-left: 1px solid rgba(200, 200, 200, 0.20);
@@ -281,7 +281,6 @@ st.markdown("""
         white-space: pre-wrap;
         word-break: break-word;
         color: #b8b8b8;
-        overflow: hidden;
     }
     .copyable .hl {
         color: #e8e8e8;
@@ -293,30 +292,13 @@ st.markdown("""
         font-size: 0.84rem;
     }
 
-    .copy-icon {
-        float: right;
-        margin: 0 0 4px 10px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.11);
-        color: rgba(200, 200, 200, 0.7);
-        border-radius: 7px;
-        width: 26px;
-        height: 26px;
-        cursor: pointer;
-        font-size: 12px;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        transition: all 0.15s ease;
+    .copy-spacer {
+        margin-top: 18px;
     }
-    .copy-icon:hover {
-        background: rgba(255, 255, 255, 0.12);
-        border-color: rgba(255, 255, 255, 0.22);
-        color: #e0e0e0;
+    .copy-spacer + div iframe {
+        border: none !important;
+        overflow: hidden !important;
     }
-    .copy-icon:active { transform: scale(0.92); }
 
     section[data-testid="stSidebar"] .stCaption,
     section[data-testid="stSidebar"] small {
@@ -347,47 +329,6 @@ st.markdown("""
     <div class="orb orb-5"></div>
 </div>
 """, unsafe_allow_html=True)
-
-components.html("""
-<script>
-(function() {
-    const doc = window.parent.document;
-    window.parent.copyBlock = function(id, btn) {
-        const el = doc.getElementById(id);
-        if (!el) return;
-        const clone = el.cloneNode(true);
-        const b = clone.querySelector('.copy-icon');
-        if (b) b.remove();
-        const text = clone.innerText.trim();
-
-        const done = function() {
-            const old = btn.innerText;
-            btn.innerText = '✓';
-            setTimeout(function() { btn.innerText = old; }, 1300);
-        };
-
-        const fallback = function() {
-            const ta = doc.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.top = '-1000px';
-            ta.style.opacity = '0';
-            doc.body.appendChild(ta);
-            ta.select();
-            try { doc.execCommand('copy'); } catch (e) {}
-            doc.body.removeChild(ta);
-            done();
-        };
-
-        if (window.parent.navigator.clipboard && window.parent.navigator.clipboard.writeText) {
-            window.parent.navigator.clipboard.writeText(text).then(done).catch(fallback);
-        } else {
-            fallback();
-        }
-    };
-})();
-</script>
-""", height=0)
 
 cookie_manager = stx.CookieManager(key="ck")
 
@@ -457,14 +398,78 @@ STRICT RULES:
 """
 
 
-def copyable_block(html_content: str, block_id: str) -> str:
-    return (
-        f'<div class="copyable" id="{block_id}">'
-        f'<button class="copy-icon" title="Copy" '
-        f'onclick="copyBlock(\'{block_id}\', this)">⧉</button>'
-        f'{html_content}'
-        f'</div>'
-    )
+def render_copy_button(text: str, key: str):
+    """Маленький iframe с иконкой копирования. Работает через execCommand внутри iframe."""
+    safe_json = json.dumps(text).replace("</", "<\\/")
+    btn_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        html, body {{
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }}
+        .copy-icon {{
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            color: rgba(200, 200, 200, 0.75);
+            border-radius: 7px;
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: all 0.15s ease;
+            outline: none;
+        }}
+        .copy-icon:hover {{
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+        }}
+        .copy-icon:active {{ transform: scale(0.92); }}
+    </style>
+    </head>
+    <body>
+        <button class="copy-icon" id="btn-{key}" title="Copy">⧉</button>
+        <script>
+            (function() {{
+                var btn = document.getElementById('btn-{key}');
+                var txt = {safe_json};
+                btn.addEventListener('click', function() {{
+                    var ok = false;
+                    try {{
+                        var ta = document.createElement('textarea');
+                        ta.value = txt;
+                        ta.style.position = 'fixed';
+                        ta.style.top = '-1000px';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        ok = document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }} catch (e) {{ ok = false; }}
+                    if (!ok && navigator.clipboard && navigator.clipboard.writeText) {{
+                        navigator.clipboard.writeText(txt).catch(function(){{}});
+                    }}
+                    var old = btn.innerText;
+                    btn.innerText = '✓';
+                    setTimeout(function() {{ btn.innerText = old; }}, 1300);
+                }});
+            }})();
+        </script>
+    </body>
+    </html>
+    """
+    components.html(btn_html, height=32, scrolling=False)
 
 
 def generate_description(prompt: str, image: Image.Image, api_key: str):
@@ -517,14 +522,17 @@ with left:
                         st.session_state["description_text"] = desc.strip()
 
         if st.session_state.get("description_text"):
-            safe = html_lib.escape(st.session_state["description_text"])
-            st.markdown(
-                f'<div class="result-wrap" id="result-block">'
-                f'<button class="copy-icon" title="Copy" '
-                f'onclick="copyBlock(\'result-block\', this)">⧉</button>'
-                f'{safe}</div>',
-                unsafe_allow_html=True
-            )
+            desc_text = st.session_state["description_text"]
+            c_text, c_btn = st.columns([20, 1])
+            with c_text:
+                safe = html_lib.escape(desc_text)
+                st.markdown(
+                    f'<div class="copyable">{safe}</div>',
+                    unsafe_allow_html=True
+                )
+            with c_btn:
+                st.markdown('<div class="copy-spacer"></div>', unsafe_allow_html=True)
+                render_copy_button(desc_text, "desc")
 
 with right:
     with st.container(border=True):
@@ -541,7 +549,7 @@ with right:
         mat1_part = f"{material1} " if material1 != "-" else ""
         highlight1 = f"{mat1_part}{item1}"
 
-        p1 = (
+        p1_html = (
             f'Generate a high-resolution studio photo of this '
             f'<span class="hl">{highlight1}</span>, '
             f'preserving every detail, on a headless/armless feminine cream linen mannequin '
@@ -549,7 +557,21 @@ with right:
             f'turned three-quarters toward the left side of the frame with soft incoming light, '
             f'against a plain dark background'
         )
-        st.markdown(copyable_block(p1, "prompt1"), unsafe_allow_html=True)
+        p1_plain = (
+            f'Generate a high-resolution studio photo of this '
+            f'{highlight1}, '
+            f'preserving every detail, on a headless/armless feminine cream linen mannequin '
+            f'{part1}, '
+            f'turned three-quarters toward the left side of the frame with soft incoming light, '
+            f'against a plain dark background'
+        )
+
+        c_text, c_btn = st.columns([20, 1])
+        with c_text:
+            st.markdown(f'<div class="copyable">{p1_html}</div>', unsafe_allow_html=True)
+        with c_btn:
+            st.markdown('<div class="copy-spacer"></div>', unsafe_allow_html=True)
+            render_copy_button(p1_plain, "p1")
 
     st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
@@ -568,10 +590,15 @@ with right:
         mat2_part = f"{material2} " if material2 != "-" else ""
         highlight2 = f"{mat2_part}{item2}"
 
-        ref_part = f' "{ref_opt}"' if ref_opt != "-" else ""
+        if ref_opt == "-":
+            ref_html = ""
+            ref_plain = ""
+        else:
+            ref_html = f' <span class="hl">{ref_opt}</span>'
+            ref_plain = f' {ref_opt}'
 
-        p2 = (
-            f'Fashion e-commerce photography{ref_part}, mid-shot of a model, wearing this '
+        p2_html = (
+            f'Fashion e-commerce photography{ref_html}, mid-shot of a model, wearing this '
             f'<span class="hl">{highlight2}</span> and '
             f'<span class="hl">{bottom}</span> high-waist wide-leg trousers. '
             f'Faceless framing, cropped at the chin, casual pose. '
@@ -579,4 +606,19 @@ with right:
             f'effortless chic, high contrast, sharp clothing details, photorealistic '
             f'--ar 3:4 --style raw'
         )
-        st.markdown(copyable_block(p2, "prompt2"), unsafe_allow_html=True)
+        p2_plain = (
+            f'Fashion e-commerce photography{ref_plain}, mid-shot of a model, wearing this '
+            f'{highlight2} and '
+            f'{bottom} high-waist wide-leg trousers. '
+            f'Faceless framing, cropped at the chin, casual pose. '
+            f'Clean light neutral grey studio background. Soft diffused lighting, minimalist aesthetic, '
+            f'effortless chic, high contrast, sharp clothing details, photorealistic '
+            f'--ar 3:4 --style raw'
+        )
+
+        c_text, c_btn = st.columns([20, 1])
+        with c_text:
+            st.markdown(f'<div class="copyable">{p2_html}</div>', unsafe_allow_html=True)
+        with c_btn:
+            st.markdown('<div class="copy-spacer"></div>', unsafe_allow_html=True)
+            render_copy_button(p2_plain, "p2")
