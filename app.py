@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import google.generativeai as genai
 from PIL import Image
 import html as html_lib
@@ -347,6 +348,47 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+components.html("""
+<script>
+(function() {
+    const doc = window.parent.document;
+    window.parent.copyBlock = function(id, btn) {
+        const el = doc.getElementById(id);
+        if (!el) return;
+        const clone = el.cloneNode(true);
+        const b = clone.querySelector('.copy-icon');
+        if (b) b.remove();
+        const text = clone.innerText.trim();
+
+        const done = function() {
+            const old = btn.innerText;
+            btn.innerText = '✓';
+            setTimeout(function() { btn.innerText = old; }, 1300);
+        };
+
+        const fallback = function() {
+            const ta = doc.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.top = '-1000px';
+            ta.style.opacity = '0';
+            doc.body.appendChild(ta);
+            ta.select();
+            try { doc.execCommand('copy'); } catch (e) {}
+            doc.body.removeChild(ta);
+            done();
+        };
+
+        if (window.parent.navigator.clipboard && window.parent.navigator.clipboard.writeText) {
+            window.parent.navigator.clipboard.writeText(text).then(done).catch(fallback);
+        } else {
+            fallback();
+        }
+    };
+})();
+</script>
+""", height=0)
+
 cookie_manager = stx.CookieManager(key="ck")
 
 if "gemini_api_key" not in st.session_state:
@@ -380,24 +422,11 @@ with st.sidebar:
     )
     st.caption(f"model // {MODEL_NAME}")
 
-COPY_JS = """
-<script>
-function copyBlock(id, btn) {
-    const el = document.getElementById(id);
-    const text = el.innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        const old = btn.innerText;
-        btn.innerText = '✓';
-        setTimeout(() => btn.innerText = old, 1300);
-    });
-}
-</script>
-"""
-
-MATERIALS = ["wool", "silk", "suede", "leather"]
+MATERIALS = ["wool", "silk", "suede", "leather", "-"]
 ITEM_TYPES = ["blazer", "dress", "coat", "top", "skirt"]
 MANNEQUIN_PARTS = ["torso", "-"]
 BOTTOM_COLORS = ["black", "white", "beige", "grey"]
+REFERENCE_OPTIONS = ["like [Reference 1]", "-"]
 
 DESCRIPTION_PROMPT = """You are a professional copywriter for a high-end vintage and designer fashion store.
 
@@ -448,8 +477,6 @@ def generate_description(prompt: str, image: Image.Image, api_key: str):
         st.error(f"API error: {e}")
         return None
 
-
-st.markdown(COPY_JS, unsafe_allow_html=True)
 
 left, right = st.columns([1, 1], gap="large")
 
@@ -511,10 +538,12 @@ with right:
         item1 = c2.selectbox("Item", ITEM_TYPES, key="p1_item")
         part1 = c3.selectbox("Mannequin", MANNEQUIN_PARTS, key="p1_part")
 
+        mat1_part = f"{material1} " if material1 != "-" else ""
+        highlight1 = f"{mat1_part}{item1}"
+
         p1 = (
             f'Generate a high-resolution studio photo of this '
-            f'<span class="hl">{material1}</span> '
-            f'<span class="hl">{item1}</span>, '
+            f'<span class="hl">{highlight1}</span>, '
             f'preserving every detail, on a headless/armless feminine cream linen mannequin '
             f'<span class="hl">{part1}</span>, '
             f'turned three-quarters toward the left side of the frame with soft incoming light, '
@@ -530,15 +559,20 @@ with right:
             unsafe_allow_html=True
         )
 
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         material2 = c1.selectbox("Material", MATERIALS, key="p2_mat")
         item2 = c2.selectbox("Item", ITEM_TYPES, key="p2_item")
         bottom = c3.selectbox("Trousers", BOTTOM_COLORS, key="p2_bottom")
+        ref_opt = c4.selectbox("Reference", REFERENCE_OPTIONS, key="p2_ref")
+
+        mat2_part = f"{material2} " if material2 != "-" else ""
+        highlight2 = f"{mat2_part}{item2}"
+
+        ref_part = f' "{ref_opt}"' if ref_opt != "-" else ""
 
         p2 = (
-            f'Fashion e-commerce photography, mid-shot of a model, wearing this '
-            f'<span class="hl">{material2}</span> '
-            f'<span class="hl">{item2}</span> and '
+            f'Fashion e-commerce photography{ref_part}, mid-shot of a model, wearing this '
+            f'<span class="hl">{highlight2}</span> and '
             f'<span class="hl">{bottom}</span> high-waist wide-leg trousers. '
             f'Faceless framing, cropped at the chin, casual pose. '
             f'Clean light neutral grey studio background. Soft diffused lighting, minimalist aesthetic, '
