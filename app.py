@@ -267,37 +267,9 @@ st.markdown("""
     header[data-testid="stHeader"] { background: transparent; }
     #MainMenu, footer { visibility: hidden; }
 
-    .copyable {
-        background: transparent;
-        border: none;
-        border-left: 1px solid rgba(200, 200, 200, 0.20);
-        border-radius: 0;
-        padding: 2px 4px 2px 16px;
-        margin-top: 18px;
-        margin-bottom: 32px;
-        font-family: 'Inter', -apple-system, sans-serif;
-        font-size: 0.88rem;
-        line-height: 1.65;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: #b8b8b8;
-    }
-    .copyable .hl {
-        color: #e8e8e8;
-        font-weight: 600;
-        background: rgba(255, 255, 255, 0.07);
-        padding: 1px 6px;
-        border-radius: 4px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.84rem;
-    }
-
-    .copy-spacer {
-        margin-top: 18px;
-    }
-    .copy-spacer + div iframe {
+    iframe[title="streamlit_components.v1.html"] {
         border: none !important;
-        overflow: hidden !important;
+        display: block;
     }
 
     section[data-testid="stSidebar"] .stCaption,
@@ -367,7 +339,7 @@ MATERIALS = ["wool", "silk", "suede", "leather", "-"]
 ITEM_TYPES = ["blazer", "dress", "coat", "top", "skirt"]
 MANNEQUIN_PARTS = ["torso", "-"]
 BOTTOM_COLORS = ["black", "white", "beige", "grey"]
-REFERENCE_OPTIONS = ["like [Reference 1]", "-"]
+REFERENCE_OPTIONS = ["Ref 1", "-"]
 
 DESCRIPTION_PROMPT = """You are a professional copywriter for a high-end vintage and designer fashion store.
 
@@ -398,78 +370,116 @@ STRICT RULES:
 """
 
 
-def render_copy_button(text: str, key: str):
-    """Маленький iframe с иконкой копирования. Работает через execCommand внутри iframe."""
-    safe_json = json.dumps(text).replace("</", "<\\/")
-    btn_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-        html, body {{
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }}
-        .copy-icon {{
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.11);
-            color: rgba(200, 200, 200, 0.75);
-            border-radius: 7px;
-            width: 26px;
-            height: 26px;
-            cursor: pointer;
-            font-size: 12px;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            transition: all 0.15s ease;
-            outline: none;
-        }}
-        .copy-icon:hover {{
-            background: rgba(255, 255, 255, 0.14);
-            border-color: rgba(255, 255, 255, 0.25);
-            color: #ffffff;
-        }}
-        .copy-icon:active {{ transform: scale(0.92); }}
-    </style>
-    </head>
-    <body>
-        <button class="copy-icon" id="btn-{key}" title="Copy">⧉</button>
-        <script>
-            (function() {{
-                var btn = document.getElementById('btn-{key}');
-                var txt = {safe_json};
-                btn.addEventListener('click', function() {{
-                    var ok = false;
-                    try {{
-                        var ta = document.createElement('textarea');
-                        ta.value = txt;
-                        ta.style.position = 'fixed';
-                        ta.style.top = '-1000px';
-                        ta.style.opacity = '0';
-                        document.body.appendChild(ta);
-                        ta.focus();
-                        ta.select();
-                        ok = document.execCommand('copy');
-                        document.body.removeChild(ta);
-                    }} catch (e) {{ ok = false; }}
-                    if (!ok && navigator.clipboard && navigator.clipboard.writeText) {{
-                        navigator.clipboard.writeText(txt).catch(function(){{}});
-                    }}
-                    var old = btn.innerText;
-                    btn.innerText = '✓';
-                    setTimeout(function() {{ btn.innerText = old; }}, 1300);
-                }});
-            }})();
-        </script>
-    </body>
-    </html>
-    """
-    components.html(btn_html, height=32, scrolling=False)
+def render_copyable(html_content: str, plain_text: str, block_id: str, min_height: int = 60):
+    payload = json.dumps(plain_text)
+    inner = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    * {{ box-sizing: border-box; }}
+    html, body {{
+        margin: 0; padding: 0;
+        background: transparent;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        overflow: hidden;
+    }}
+    .wrap {{
+        position: relative;
+        border-left: 1px solid rgba(200, 200, 200, 0.20);
+        padding: 2px 40px 2px 16px;
+        font-size: 13.5px;
+        line-height: 1.65;
+        color: #b8b8b8;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }}
+    .hl {{
+        color: #e8e8e8;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.07);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12.5px;
+    }}
+    .copy-icon {{
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.11);
+        color: rgba(200, 200, 200, 0.75);
+        border-radius: 7px;
+        width: 26px;
+        height: 26px;
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: all 0.15s ease;
+        outline: none;
+    }}
+    .copy-icon:hover {{
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }}
+    .copy-icon:active {{ transform: scale(0.92); }}
+</style>
+</head>
+<body>
+    <div class="wrap">
+        {html_content}
+        <button class="copy-icon" id="btn-{block_id}" title="Copy">⧉</button>
+    </div>
+    <script>
+        (function() {{
+            var btn = document.getElementById('btn-{block_id}');
+            var txt = {payload};
+            btn.addEventListener('click', function() {{
+                var ok = false;
+                try {{
+                    var ta = document.createElement('textarea');
+                    ta.value = txt;
+                    ta.style.position = 'fixed';
+                    ta.style.top = '-1000px';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.focus(); ta.select();
+                    ok = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }} catch (e) {{ ok = false; }}
+                if (!ok && navigator.clipboard && navigator.clipboard.writeText) {{
+                    navigator.clipboard.writeText(txt).catch(function(){{}});
+                }}
+                var old = btn.innerText;
+                btn.innerText = '✓';
+                setTimeout(function() {{ btn.innerText = old; }}, 1300);
+            }});
+            function sendHeight() {{
+                var h = document.documentElement.scrollHeight;
+                try {{
+                    window.parent.postMessage({{
+                        isStreamlitMessage: true,
+                        type: "streamlit:setFrameHeight",
+                        height: h + 4
+                    }}, "*");
+                }} catch (e) {{}}
+            }}
+            sendHeight();
+            setTimeout(sendHeight, 150);
+            setTimeout(sendHeight, 500);
+            window.addEventListener('load', sendHeight);
+        }})();
+    </script>
+</body>
+</html>"""
+    components.html(inner, height=min_height, scrolling=False)
 
 
 def generate_description(prompt: str, image: Image.Image, api_key: str):
@@ -523,16 +533,8 @@ with left:
 
         if st.session_state.get("description_text"):
             desc_text = st.session_state["description_text"]
-            c_text, c_btn = st.columns([20, 1])
-            with c_text:
-                safe = html_lib.escape(desc_text)
-                st.markdown(
-                    f'<div class="copyable">{safe}</div>',
-                    unsafe_allow_html=True
-                )
-            with c_btn:
-                st.markdown('<div class="copy-spacer"></div>', unsafe_allow_html=True)
-                render_copy_button(desc_text, "desc")
+            safe = html_lib.escape(desc_text)
+            render_copyable(safe, desc_text, "desc", min_height=120)
 
 with right:
     with st.container(border=True):
@@ -565,13 +567,7 @@ with right:
             f'turned three-quarters toward the left side of the frame with soft incoming light, '
             f'against a plain dark background'
         )
-
-        c_text, c_btn = st.columns([20, 1])
-        with c_text:
-            st.markdown(f'<div class="copyable">{p1_html}</div>', unsafe_allow_html=True)
-        with c_btn:
-            st.markdown('<div class="copy-spacer"></div>', unsafe_allow_html=True)
-            render_copy_button(p1_plain, "p1")
+        render_copyable(p1_html, p1_plain, "p1", min_height=90)
 
     st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
@@ -594,8 +590,8 @@ with right:
             ref_html = ""
             ref_plain = ""
         else:
-            ref_html = f' <span class="hl">{ref_opt}</span>'
-            ref_plain = f' {ref_opt}'
+            ref_html = f' <span class="hl">like {ref_opt}</span>'
+            ref_plain = f' like {ref_opt}'
 
         p2_html = (
             f'Fashion e-commerce photography{ref_html}, mid-shot of a model, wearing this '
@@ -615,10 +611,4 @@ with right:
             f'effortless chic, high contrast, sharp clothing details, photorealistic '
             f'--ar 3:4 --style raw'
         )
-
-        c_text, c_btn = st.columns([20, 1])
-        with c_text:
-            st.markdown(f'<div class="copyable">{p2_html}</div>', unsafe_allow_html=True)
-        with c_btn:
-            st.markdown('<div class="copy-spacer"></div>', unsafe_allow_html=True)
-            render_copy_button(p2_plain, "p2")
+        render_copyable(p2_html, p2_plain, "p2", min_height=110)
